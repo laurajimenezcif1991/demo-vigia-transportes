@@ -39,7 +39,7 @@ export default function App() {
       <CandidateStatusProvider>
         <InterviewProvider>
           <PipelineProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <Routes>
             {/* ── Auth (public) ── */}
             <Route path="/auth" element={<AuthPage />} />
