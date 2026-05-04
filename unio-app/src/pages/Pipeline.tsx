@@ -42,7 +42,7 @@ const STAGE_META: Record<string, { label: string; stageBadge: string }> = {
   scoring:      { label: 'Verificación (RUNT/RNDC)', stageBadge: 'Verificación' },
   prescreening: { label: 'Pre-entrevista IA',        stageBadge: 'Pre screening' },
   entrevistas:  { label: 'Entrevistas',              stageBadge: 'Entrevistas' },
-  evaluaciones: { label: 'Evaluaciones',             stageBadge: 'Evaluaciones' },
+  evaluaciones: { label: 'Prueba de manejo',          stageBadge: 'Prueba manejo' },
   finalistas:   { label: 'Finalistas',               stageBadge: 'Finalistas' },
 };
 

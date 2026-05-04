@@ -406,6 +406,7 @@ export default function CandidateList() {
               selected={selected.has(candidate.id)}
               onSelect={toggleSelect}
               showStageChip={false}
+              showPruebaManejo={jobId.startsWith('mock-') && currentStage === 'evaluaciones'}
               onClick={() => {
                 const base = processId
                   ? `/pipeline/${jobId}/process/${processId}/candidate/${candidate.id}`
@@ -446,7 +447,7 @@ export default function CandidateList() {
             onClick={() => handleBulkAction('pasar')}
           >
             <CheckCircle2 size={18} />
-            Pasar etapa
+            {jobId.startsWith('mock-') && currentStage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
           </Button>
           <Button
             variant="danger-outline"

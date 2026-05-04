@@ -355,7 +355,7 @@ export default function Candidatos() {
         <div style={{ display: 'flex', gap: '12px' }}>
           <Button variant="primary" size="lg" onClick={() => handleBulkAction('pasar')}>
             <CheckCircle2 size={18} />
-            Pasar etapa
+            {activeStage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
           </Button>
           <Button variant="danger-outline" size="lg" onClick={() => handleBulkAction('descartar')}>
             <X size={18} />

@@ -62,6 +62,7 @@ export interface Candidate {
     logros: string[];
     senales: string[];
   };
+  pruebaManejo?: { status: 'pendiente' | 'agendada'; fecha?: string; hora?: string; lugar?: string };
   prescreeningAI?: {
     score: number;
     status: 'continua' | 'pendiente' | 'rechazado';
@@ -2118,7 +2119,13 @@ const _vigiaPersonal: { label: string; value: string; status: 'ok' | 'warning' |
   [{ label: 'Municipio', value: 'Bogotá (Engativá)', status: 'ok' }, { label: 'Disponibilidad de inicio', value: 'Inmediata', status: 'ok' }, { label: 'Situación laboral', value: 'Disponible', status: 'ok' }, { label: 'Disponibilidad horaria', value: 'Dom–dom con compensatorio', status: 'ok' }, { label: 'Transporte', value: 'Bicicleta propia', status: 'ok' }, { label: 'Grupo familiar', value: 'Soltero, sin hijos', status: 'neutral' }],
 ];
 
-function _mkVigia(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' = 'scoring'): Candidate {
+const _vigiaTestSlots = [
+  { fecha: 'Sáb 10 May 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Vigía — Cota' },
+  { fecha: 'Sáb 10 May 2026', hora: '09:30 AM', lugar: 'Patio de maniobras Vigía — Cota' },
+  { fecha: 'Dom 11 May 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Vigía — Cota' },
+];
+
+function _mkVigia(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' | 'evaluaciones' = 'scoring'): Candidate {
   const hi = score >= 75; const md = score >= 58;
   const idx = parseInt(id.split('-')[1]) - 1;
   const job = _vigiaJobs[idx] ?? _vigiaJobs[0];
@@ -2177,6 +2184,9 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       totalManifiestos: trips,
       licenseCategories: (_vigiaRunt[idx]?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
     },
+    ...(stage === 'evaluaciones'
+      ? { pruebaManejo: idx < _vigiaTestSlots.length ? { status: 'agendada' as const, ..._vigiaTestSlots[idx] } : { status: 'pendiente' as const } }
+      : {}),
     ...(pre ? { prescreeningAI: pre } : {}),
     scoringAI: {
       score: Math.round(score * 0.95),
@@ -2226,11 +2236,11 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
 }
 
 const vigiaCandidates: Candidate[] = [
-  _mkVigia('mvc-1',  'Carlos Jiménez',         91, _p(1,  'men'), 'CJ', '#8750F6', 'Bogotá',       '12 Años', "$3'200.000", 'en_rango',       'prescreening'),
-  _mkVigia('mvc-2',  'Hernando Vargas',         88, _p(2,  'men'), 'HV', '#27BE69', 'Cota',         '10 Años', "$3'000.000", 'en_rango',       'prescreening'),
-  _mkVigia('mvc-3',  'Luis Fernando Moreno',    85, _p(3,  'men'), 'LM', '#295BFF', 'Mosquera',     '8 Años',  "$3'400.000", 'en_rango',       'prescreening'),
-  _mkVigia('mvc-4',  'Jhon Édison Pérez',       82, _p(4,  'men'), 'JP', '#F6A350', 'Bogotá',       '9 Años',  "$3'000.000", 'en_rango',       'prescreening'),
-  _mkVigia('mvc-5',  'Gustavo Rodríguez',       79, _p(5,  'men'), 'GR', '#8750F6', 'Funza',        '7 Años',  "$3'200.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-1',  'Carlos Jiménez',         91, _p(1,  'men'), 'CJ', '#8750F6', 'Bogotá',       '12 Años', "$3'200.000", 'en_rango',       'evaluaciones'),
+  _mkVigia('mvc-2',  'Hernando Vargas',         88, _p(2,  'men'), 'HV', '#27BE69', 'Cota',         '10 Años', "$3'000.000", 'en_rango',       'evaluaciones'),
+  _mkVigia('mvc-3',  'Luis Fernando Moreno',    85, _p(3,  'men'), 'LM', '#295BFF', 'Mosquera',     '8 Años',  "$3'400.000", 'en_rango',       'evaluaciones'),
+  _mkVigia('mvc-4',  'Jhon Édison Pérez',       82, _p(4,  'men'), 'JP', '#F6A350', 'Bogotá',       '9 Años',  "$3'000.000", 'en_rango',       'evaluaciones'),
+  _mkVigia('mvc-5',  'Gustavo Rodríguez',       79, _p(5,  'men'), 'GR', '#8750F6', 'Funza',        '7 Años',  "$3'200.000", 'en_rango',       'evaluaciones'),
   _mkVigia('mvc-6',  'Édgar Ríos',              76, _p(6,  'men'), 'ER', '#27BE69', 'Cota',         '6 Años',  "$3'500.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-7',  'Alexánder Suárez',        73, _p(7,  'men'), 'AS', '#295BFF', 'Madrid',       '5 Años',  "$3'100.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-8',  'William Castaño',         70, _p(8,  'men'), 'WC', '#F6A350', 'Bogotá',       '6 Años',  "$2'900.000", 'en_rango',       'prescreening'),
@@ -2263,12 +2273,11 @@ export function getMockPipelineStages(jobId: string): PipelineStage[] {
   switch (jobId) {
     case 'mock-vigia':
       return [
-               s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',   'in_progress',  5, true),
-               s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'in_progress',  10, true),
-        s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started',  0, false),
-        s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started',  0, false),
-        s('finalistas',   'Finalistas',               'Finalistas',    'not_started',  0, false),
-      ];
+               s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',  'in_progress',  5, true),
+               s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'in_progress',  5, true),
+               s('evaluaciones', 'Prueba de manejo',         'Prueba manejo', 'in_progress',  5, false),
+               s('finalistas',   'Finalistas',               'Finalistas',    'not_started',  0, false),
+             ];
     default:
       return [
         s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',   'not_started', 0, true),
@@ -2280,11 +2289,12 @@ export function getMockPipelineStages(jobId: string): PipelineStage[] {
   }
 }
 
-const vigiaScoring      = vigiaCandidates.filter(c => c.currentStage === 'scoring');
-const vigiaPrescreening = vigiaCandidates.filter(c => c.currentStage === 'prescreening');
+const vigiaScoring       = vigiaCandidates.filter(c => c.currentStage === 'scoring');
+const vigiaPrescreening  = vigiaCandidates.filter(c => c.currentStage === 'prescreening');
+const vigiaEvaluaciones  = vigiaCandidates.filter(c => c.currentStage === 'evaluaciones');
 
 export const mockCandidatesByStage: Record<string, Partial<Record<string, Candidate[]>>> = {
-  'mock-vigia': { scoring: vigiaScoring, prescreening: vigiaPrescreening },
+  'mock-vigia': { scoring: vigiaScoring, prescreening: vigiaPrescreening, evaluaciones: vigiaEvaluaciones },
 };
 
 export const mockCandidatesById: Record<string, Candidate> = [

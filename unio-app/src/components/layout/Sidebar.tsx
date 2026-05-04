@@ -31,7 +31,9 @@ export default function Sidebar({ activeItem }: SidebarProps) {
     : true;
   const finalistasLocked = finalistaLocked || (isMockJob && !mockHasFinalists);
 
-  const PIPELINE_STAGES = ['scoring', 'prescreening', 'entrevistas', 'evaluaciones'] as const;
+  const PIPELINE_STAGES = isMockJob
+    ? (['scoring', 'prescreening', 'evaluaciones'] as const)
+    : (['scoring', 'prescreening', 'entrevistas', 'evaluaciones'] as const);
   const progressIdx = PIPELINE_STAGES.indexOf(progressStage as typeof PIPELINE_STAGES[number]);
 
   const getActiveId = (): string => {
@@ -43,6 +45,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       const params = new URLSearchParams(location.search);
       const stage = params.get('stage');
       if (stage && ['scoring', 'prescreening', 'entrevistas', 'evaluaciones'].includes(stage)) return stage;
+
       if (path.includes('/finalist/')) return 'finalistas';
       return 'pipeline';
     }
@@ -95,19 +98,19 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       path: `${stageBase}/prescreening`,
       locked: progressIdx < 1,            // requiere haber llegado a prescreening
     },
-    {
+    ...(!isMockJob ? [{
       id: 'entrevistas',
       label: 'Entrevistas',
       Icon: MessageSquare,
       path: `${stageBase}/entrevistas`,
-      locked: progressIdx < 2,            // requiere haber llegado a entrevistas
-    },
+      locked: progressIdx < 2,
+    }] : []),
     {
       id: 'evaluaciones',
-      label: 'Evaluaciones',
+      label: isMockJob ? 'Prueba de manejo' : 'Evaluaciones',
       Icon: CheckSquare,
       path: `${stageBase}/evaluaciones`,
-      locked: progressIdx < 3,            // requiere haber llegado a evaluaciones
+      locked: progressIdx < (isMockJob ? 2 : 3),
     },
     ...[{
         id: 'finalistas',

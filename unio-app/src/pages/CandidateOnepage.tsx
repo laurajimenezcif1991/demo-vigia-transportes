@@ -58,7 +58,6 @@ import { Skeleton, SkeletonCircle } from '../components/ui/Skeleton';
 const ONEPAGE_PIPELINE_STAGES: PipelineStageKey[] = [
   'scoring',
   'prescreening',
-  'entrevistas',
   'evaluaciones',
 ];
 
@@ -194,8 +193,9 @@ export default function CandidateOnepage() {
   const isPendingEvaluaciones = isMockJob && isCandidatePending(jobId, 'evaluaciones', candidateId);
   const candidate = apiCandidate ?? { id: candidateId, name: '', role: '', sector: '', years: '', location: '', bio: '', score: 0, avatarInitials: candidateId.slice(0, 2).toUpperCase(), avatarColor: '#8750F6', hasCurrentJob: false, superpoder: '', aspiration: '', budget: '', salaryRange: 'en_rango' as const, currentStage: stage, scoringAI: { score: 0, status: 'pendiente' as const, resumen: '', noNegociables: [], logros: [], senales: [] } };
   // Show prescreening if URL stage implies it OR if the API returned prescreening data OR if candidate was advanced there
-  const hasPrescreening = !!(apiCandidate?.prescreeningAI) || stage === 'prescreening' || stage === 'entrevistas' || stage === 'evaluaciones' || isPendingPrescreening;
-  const hasEntrevistas  = stage === 'entrevistas'  || stage === 'evaluaciones' || isPendingEntrevistas;
+  const hasPrescreening  = !!(apiCandidate?.prescreeningAI) || stage === 'prescreening' || stage === 'entrevistas' || stage === 'evaluaciones' || isPendingPrescreening;
+  const hasEntrevistas   = !isMockJob && (stage === 'entrevistas' || stage === 'evaluaciones' || isPendingEntrevistas);
+  const hasEvaluaciones  = stage === 'evaluaciones' || isPendingEvaluaciones;
 
   const { setStatus } = useCandidateStatus();
   const { getFeedback } = useInterview();
@@ -610,8 +610,8 @@ export default function CandidateOnepage() {
             </AccordionSection>
           </div>
 
-          {/* 3. Entrevistas */}
-          <div ref={entrevistasSectionRef} style={{ scrollMarginTop: 24 }}>
+          {/* 3. Entrevistas — hidden for mock-vigia */}
+          {!isMockJob && <div ref={entrevistasSectionRef} style={{ scrollMarginTop: 24 }}>
             <AccordionSection
               number={3}
               title="Entrevistas"
@@ -636,26 +636,30 @@ export default function CandidateOnepage() {
                 savedFeedback={savedFeedback}
               />
             </AccordionSection>
-          </div>
+          </div>}
 
-          {/* 4–5. Evaluaciones (scroll target: primera sub-etapa) */}
+          {/* 3 (mock) / 4–5 (non-mock). Evaluaciones / Prueba de manejo */}
           <div ref={evaluacionesSectionRef} style={{ scrollMarginTop: 24 }}>
             <AccordionSection
-              number={4}
-              title="Prueba Psicológica"
-              score={isPendingEvaluaciones ? undefined : (stage === 'evaluaciones' ? candidate.psychTest?.score : undefined)}
+              number={isMockJob ? 3 : 4}
+              title={isMockJob ? 'Prueba de manejo' : 'Prueba Psicológica'}
+              score={isMockJob ? undefined : (isPendingEvaluaciones ? undefined : (stage === 'evaluaciones' ? candidate.psychTest?.score : undefined))}
               statusText={
                 isPendingEvaluaciones
                   ? 'En proceso'
-                  : stage === 'evaluaciones' ? 'Continúa' : hasEntrevistas ? 'En proceso' : 'Por iniciar'
+                  : hasEvaluaciones
+                  ? (isMockJob && (candidate as Candidate).pruebaManejo?.status === 'agendada' ? 'Agendada' : 'En proceso')
+                  : hasEntrevistas ? 'En proceso' : 'Por iniciar'
               }
-              statusOk={!isPendingEvaluaciones && stage === 'evaluaciones'}
+              statusOk={!isPendingEvaluaciones && hasEvaluaciones}
               isOpen={evaluacionesOpen}
-              onToggle={() => (hasEntrevistas || isPendingEvaluaciones) && setEvaluacionesOpen(!evaluacionesOpen)}
-              isLocked={!hasEntrevistas && !isPendingEvaluaciones}
+              onToggle={() => (hasEvaluaciones || hasEntrevistas || isPendingEvaluaciones) && setEvaluacionesOpen(!evaluacionesOpen)}
+              isLocked={!hasEvaluaciones && !hasEntrevistas && !isPendingEvaluaciones}
             >
-              {(hasEntrevistas || isPendingEvaluaciones) && (
-                isPendingEvaluaciones ? (
+              {(hasEvaluaciones || hasEntrevistas || isPendingEvaluaciones) && (
+                isMockJob ? (
+                  <PruebaManejoContent candidate={candidate as Candidate} isPending={isPendingEvaluaciones} />
+                ) : isPendingEvaluaciones ? (
                   <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
                     Pendiente: la prueba psicológica aún no ha sido completada por el candidato.
                   </div>
@@ -669,32 +673,34 @@ export default function CandidateOnepage() {
               )}
             </AccordionSection>
 
-            <div style={{ marginTop: 12 }}>
-              <AccordionSection
-                number={5}
-                title="Prueba Técnica"
-                score={(hasEntrevistas || isPendingEvaluaciones) ? techTestScore : undefined}
-                statusText={
-                  (!hasEntrevistas && !isPendingEvaluaciones) ? 'Por iniciar' :
-                  isPendingEvaluaciones && techTestScore === null ? 'En proceso' :
-                  techTestScore === null ? 'Por iniciar' :
-                  techTestRecomendacion === 'no_recomendar' ? 'Descartado' : 'Continúa'
-                }
-                statusOk={techTestScore !== null && techTestRecomendacion !== 'no_recomendar'}
-                isOpen={pruebaTecnicaOpen}
-                onToggle={() => (hasEntrevistas || isPendingEvaluaciones) && setPruebaTecnicaOpen(!pruebaTecnicaOpen)}
-                isLocked={!hasEntrevistas && !isPendingEvaluaciones}
-              >
-                {(hasEntrevistas || isPendingEvaluaciones) && (
-                  <PruebaTecnicaContent
-                    candidateId={candidateId}
-                    meta={isPendingEvaluaciones ? undefined : interview?.techTestMeta}
-                    onScoreChange={setTechTestScore}
-                    onRecomendacionChange={setTechTestRecomendacion}
-                  />
-                )}
-              </AccordionSection>
-            </div>
+            {!isMockJob && (
+              <div style={{ marginTop: 12 }}>
+                <AccordionSection
+                  number={5}
+                  title="Prueba Técnica"
+                  score={(hasEntrevistas || isPendingEvaluaciones) ? techTestScore : undefined}
+                  statusText={
+                    (!hasEntrevistas && !isPendingEvaluaciones) ? 'Por iniciar' :
+                    isPendingEvaluaciones && techTestScore === null ? 'En proceso' :
+                    techTestScore === null ? 'Por iniciar' :
+                    techTestRecomendacion === 'no_recomendar' ? 'Descartado' : 'Continúa'
+                  }
+                  statusOk={techTestScore !== null && techTestRecomendacion !== 'no_recomendar'}
+                  isOpen={pruebaTecnicaOpen}
+                  onToggle={() => (hasEntrevistas || isPendingEvaluaciones) && setPruebaTecnicaOpen(!pruebaTecnicaOpen)}
+                  isLocked={!hasEntrevistas && !isPendingEvaluaciones}
+                >
+                  {(hasEntrevistas || isPendingEvaluaciones) && (
+                    <PruebaTecnicaContent
+                      candidateId={candidateId}
+                      meta={isPendingEvaluaciones ? undefined : interview?.techTestMeta}
+                      onScoreChange={setTechTestScore}
+                      onRecomendacionChange={setTechTestRecomendacion}
+                    />
+                  )}
+                </AccordionSection>
+              </div>
+            )}
           </div>
         </div>
         </div>
@@ -726,7 +732,7 @@ export default function CandidateOnepage() {
             }}
           >
             <CheckCircle2 size={16} />
-            Pasar etapa
+            {isMockJob && stage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
           </Button>
           <Button
             variant="ghost"
@@ -1216,6 +1222,99 @@ function ScoringContent({ candidate }: { candidate: Candidate }) {
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Prueba de manejo content (Vigía only) ────────────────────────────────────
+
+function PruebaManejoContent({ candidate, isPending }: { candidate: Candidate; isPending: boolean }) {
+  const pm = candidate.pruebaManejo;
+
+  if (isPending || !pm) {
+    return (
+      <div style={{ paddingTop: '16px', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+        Candidato en proceso — la prueba de manejo aún no ha sido agendada.
+      </div>
+    );
+  }
+
+  if (pm.status === 'pendiente') {
+    return (
+      <div style={{ paddingTop: '16px' }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '10px',
+          background: 'var(--color-warning-bg)',
+          border: '1.5px solid var(--color-warning)',
+          borderRadius: 'var(--radius-xl)', padding: '14px 24px',
+        }}>
+          <AlertTriangle size={18} color="var(--color-warning)" />
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', color: 'var(--color-neutral-800)' }}>
+              Pendiente por agendar
+            </div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+              El candidato aún no tiene fecha asignada para la prueba de manejo.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop: '16px' }}>
+      <div style={{
+        border: '1.5px solid var(--color-neutral-200)',
+        borderRadius: '26px',
+        overflow: 'hidden',
+        background: 'var(--container-bg)',
+      }}>
+        {/* Header */}
+        <div style={{
+          background: 'var(--color-brand-primary)',
+          padding: '12px 24px',
+          fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px',
+          color: 'var(--color-text-inverse)',
+        }}>
+          Prueba de manejo agendada
+        </div>
+        {/* Details */}
+        {[
+          { label: 'Fecha', value: pm.fecha ?? '—' },
+          { label: 'Hora', value: pm.hora ?? '—' },
+          { label: 'Lugar', value: pm.lugar ?? '—' },
+        ].map((row, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 24px',
+            borderBottom: i < 2 ? '1px solid var(--color-neutral-200)' : 'none',
+            background: i % 2 === 0 ? 'var(--color-surface-base)' : 'var(--color-neutral-50)',
+          }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: 'var(--color-neutral-700)' }}>
+              {row.label}
+            </span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {i === 0 && <Calendar size={14} color="var(--color-brand-accent)" />}
+              {i === 1 && <Clock size={14} color="var(--color-brand-accent)" />}
+              {i === 2 && <MapPin size={14} color="var(--color-brand-accent)" />}
+              {row.value}
+            </span>
+          </div>
+        ))}
+        {/* Status footer */}
+        <div style={{
+          padding: '10px 24px',
+          background: 'var(--color-secondary-50)',
+          borderTop: '1px solid var(--color-neutral-200)',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px',
+          color: 'var(--color-positive-700, #17723F)',
+        }}>
+          <CheckCircle2 size={15} color="var(--color-success)" />
+          Prueba confirmada — el candidato fue notificado por WhatsApp
         </div>
       </div>
     </div>

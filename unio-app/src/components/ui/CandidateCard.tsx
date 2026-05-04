@@ -4,7 +4,7 @@ import Avatar from './Avatar';
 import { getScoreColors } from './ScorePill';
 import Badge from './Badge';
 import { useState } from 'react';
-import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle, Calendar, AlertCircle } from 'lucide-react';
 
 type StatusConfig = {
   icon: React.ReactNode;
@@ -45,13 +45,14 @@ interface CandidateCardProps {
   onClick?: () => void;
   showStageChip?: boolean;
   isPending?: boolean;
+  showPruebaManejo?: boolean;
 }
 
 const GRADIENT = 'linear-gradient(115deg, #9A7CF7, #FDD83F, #F05899, #3DAC56, #00ADFE)';
 const gradientBorderBg = (innerColor: string) =>
   `linear-gradient(${innerColor}, ${innerColor}) padding-box, ${GRADIENT} border-box`;
 
-export default function CandidateCard({ candidate, statusLabel, selected, onSelect, onClick, showStageChip = true, isPending = false }: CandidateCardProps) {
+export default function CandidateCard({ candidate, statusLabel, selected, onSelect, onClick, showStageChip = true, isPending = false, showPruebaManejo = false }: CandidateCardProps) {
   const { bg: scoreBg, fg: scoreFg } = getScoreColors(candidate.score);
   const [hovered, setHovered] = useState(false);
   const showGradient = hovered || !!selected;
@@ -256,6 +257,37 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
         >
           {candidate.bio}
         </p>
+
+        {/* Prueba de manejo badge — only shown in evaluaciones stage */}
+        {showPruebaManejo && candidate.pruebaManejo && (
+          <div style={{ marginTop: '8px' }}>
+            {candidate.pruebaManejo.status === 'agendada' ? (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'var(--color-success-bg)',
+                border: '1px solid var(--color-success)',
+                borderRadius: '20px', padding: '4px 12px',
+                fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600,
+                color: 'var(--color-positive-700, #17723F)',
+              }}>
+                <Calendar size={12} strokeWidth={2.5} />
+                {candidate.pruebaManejo.fecha} · {candidate.pruebaManejo.hora} · {candidate.pruebaManejo.lugar}
+              </span>
+            ) : (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'var(--color-warning-bg)',
+                border: '1px solid var(--color-warning)',
+                borderRadius: '20px', padding: '4px 12px',
+                fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600,
+                color: 'var(--color-warning-700, #A37800)',
+              }}>
+                <AlertCircle size={12} strokeWidth={2.5} />
+                Pendiente por agendar
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Score */}
