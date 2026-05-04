@@ -7,6 +7,10 @@
 
 ## [Sin commitear]
 
+### Fase Pre-screening — Vigía Conductores
+- **`mock.ts`** — Extendido `prescreeningAI` con campos `entornoPersonal` y `experienciaLaboral`. Añadidos `_vigiaPersonal` (datos personales confirmados por el agente IA en llamada/WhatsApp) y `_vigiaExpPrev` (historial previo). `_mkVigia` ahora acepta parámetro `stage`; genera datos de pre-screening para candidatos en etapa `prescreening`. Top 10 candidatos Vigía movidos a `prescreening`, 5 restantes en `scoring`. `mockCandidatesByStage` y conteos de `getMockPipelineStages` actualizados.
+- **`CandidateOnepage.tsx`** — `PrescreeningContent` expandido: nueva sección "Resumen de la conversación", tabla "Entorno personal" con íconos de estado (ok/warning/neutral), y tarjetas de "Experiencia laboral" con empresa, rol, período y descripción.
+
 ---
 
 ## [1cfbf64] — 03 May 2026
