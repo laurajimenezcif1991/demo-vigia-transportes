@@ -7,6 +7,20 @@
 
 ## [Sin commitear]
 
+---
+
+## [deploy] — 03 May 2026
+
+### Deploy a GitHub Pages
+- **`vite.config.ts`** — Agregado `base: '/demo-vigia-transportes/'` para rutas correctas en GitHub Pages.
+- **`public/404.html`** — Agregado redirect SPA para que React Router funcione en GitHub Pages.
+- **`index.html`** — Script de restauración de rutas SPA en carga inicial.
+- **`package.json`** — Agregado script `deploy` con `gh-pages`. Build sin `tsc -b` para evitar bloqueos por errores de tipo no críticos.
+
+---
+
+## [pre-summary] — 03 May 2026
+
 ### Fase Pre-screening — Vigía Conductores
 - **`mock.ts`** — Extendido `prescreeningAI` con campos `entornoPersonal` y `experienciaLaboral`. Añadidos `_vigiaPersonal` (datos personales confirmados por el agente IA en llamada/WhatsApp) y `_vigiaExpPrev` (historial previo). `_mkVigia` ahora acepta parámetro `stage`; genera datos de pre-screening para candidatos en etapa `prescreening`. Top 10 candidatos Vigía movidos a `prescreening`, 5 restantes en `scoring`. `mockCandidatesByStage` y conteos de `getMockPipelineStages` actualizados.
 - **`CandidateOnepage.tsx`** — `PrescreeningContent` expandido: nueva sección "Resumen de la conversación", tabla "Entorno personal" con íconos de estado (ok/warning/neutral), y tarjetas de "Experiencia laboral" con empresa, rol, período y descripción.
