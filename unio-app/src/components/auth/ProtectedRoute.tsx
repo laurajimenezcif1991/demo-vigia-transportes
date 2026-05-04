@@ -1,6 +1,9 @@
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { type ReactNode } from 'react';
 
-// Demo mode: auth check disabled — all routes are publicly accessible.
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
 }
