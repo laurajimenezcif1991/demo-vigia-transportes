@@ -157,7 +157,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
               onClick={() => !isLocked && navigate(item.path)}
               style={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 gap: '10px',
                 width: '100%',
                 padding: '10px 20px',
@@ -177,7 +177,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
             >
               <item.Icon
                 size={16}
-                style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }}
+                style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0, marginTop: '1px' }}
               />
               <span>{item.label}</span>
             </button>
