@@ -83,7 +83,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
   const stageItems = [
     {
       id: 'scoring',
-      label: 'Scoring IA',
+      label: 'Verificados (RUNT/RNDC)',
       Icon: Search,
       path: `${stageBase}/scoring`,
       locked: false,                      // siempre activo: es la primera fase

@@ -166,8 +166,8 @@ export const vacantes: Vacante[] = [
 export const getPipelineStages = (jobId: string): PipelineStage[] => [
   {
     id: 'scoring',
-    label: 'Scoring IA',
-    stageBadge: 'Scoring',
+    label: 'Verificados (RUNT/RNDC)',
+    stageBadge: 'Verificados',
     status: 'completed',
     candidateCount: 28,
     isAI: true,
@@ -2041,113 +2041,157 @@ const venScoreOnly: Candidate[] = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
+// VACANTE VIGIA — CONDUCTOR C2 CARGA REFRIGERADA | Transportes Vigía S.A.S.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _vigiaJobs = [
+  { c: 'Saferbo S.A.',                r: 'Conductor C2',                d: '01/2025' },
+  { c: 'TCC S.A.S.',                  r: 'Conductor Carga Refrigerada',  d: '11/2024' },
+  { c: 'Servientrega S.A.',           r: 'Conductor C2',                d: '03/2025' },
+  { c: 'Coordinadora Mercantil',      r: 'Conductor C2',                d: '12/2024' },
+  { c: 'Almacenes Éxito',             r: 'Conductor Refrigerado',       d: '02/2025' },
+  { c: 'Frío Andino S.A.S.',          r: 'Conductor Carga Refrigerada', d: '01/2025' },
+  { c: 'Logística TransCor S.A.S.',   r: 'Conductor C2',                d: '04/2024' },
+  { c: 'Transportes El Cóndor',       r: 'Conductor C2',                d: '10/2024' },
+  { c: 'Almacenes La 14 S.A.',        r: 'Conductor Refrigerado',       d: '06/2024' },
+  { c: 'Rapi Carga S.A.',             r: 'Conductor C2',                d: '09/2024' },
+  { c: 'TransAldi S.A.S.',            r: 'Conductor',                   d: '03/2024' },
+  { c: 'Carga Global S.A.S.',         r: 'Conductor C2',                d: '07/2024' },
+  { c: 'Transportes Rápidos Ltda.',   r: 'Conductor',                   d: '05/2024' },
+  { c: 'Distribuidora Andina',        r: 'Conductor C2',                d: '02/2024' },
+  { c: 'Trans Express Col',           r: 'Conductor',                   d: '08/2024' },
+];
+
+function _mkVigia(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange): Candidate {
+  const hi = score >= 75; const md = score >= 58;
+  const idx = parseInt(id.split('-')[1]) - 1;
+  const job = _vigiaJobs[idx] ?? _vigiaJobs[0];
+  const trips = hi ? Math.round(150 + (score - 75) * 8) : md ? Math.round(70 + (score - 58) * 3) : Math.round(20 + score * 0.5);
+  const licYears = hi ? Math.max(4, Math.round((score - 75) / 4) + 4) : md ? 2 : 1;
+  const wrongCity = city === 'Bucaramanga' || city === 'Barranquilla';
+  return {
+    id, name, role: 'Conductor C2 Carga Refrigerada', sector: 'Transporte de Carga / Logística',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor de carga con licencia C2 y experiencia en transporte terrestre de mercancía refrigerada y congelada a nivel nacional. Manejo de vehículos con unidad de frío y cumplimiento de protocolos HSEQ y BASC.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: score >= 68,
+    ...(score >= 68
+      ? { currentCompany: job.c, currentRole: job.r }
+      : { lastCompany: job.c, lastRole: job.r, lastDate: job.d }),
+    superpoder: hi
+      ? '"Conducción segura con cero incidentes y manejo preciso de cadena de frío"'
+      : md
+      ? '"Conocimiento de rutas nacionales y cumplimiento de tiempos de entrega"'
+      : '"Disponibilidad y disposición para aprender el cargo"',
+    aspiration, budget: "$3'500.000", salaryRange, currentStage: 'scoring',
+    scoringAI: {
+      score: Math.round(score * 0.95),
+      status: score >= 58 ? 'continua' : 'pendiente',
+      resumen: hi
+        ? `${name} cumple todos los criterios verificados en RUNT y RNDC. Licencia C2 con ${licYears}+ años de expedición, ${trips} manifiestos de ruta verificados en los últimos 5 años y sin infracciones graves registradas.`
+        : md
+        ? `${name} cumple parcialmente los criterios de verificación RUNT/RNDC. Algunos criterios presentan observaciones que requieren validación adicional en el proceso.`
+        : `${name} no cumple los requisitos mínimos verificados en RUNT/RNDC. Se identificaron brechas en licencia vigente, historial de viajes o criterios de ubicación.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: hi || (md && score >= 65) },
+        { label: 'Mínimo 100 manifiestos de ruta verificados (RUNT/RNDC, últimos 5 años)', cumple: hi || (md && score >= 63) },
+        { label: 'Residencia en Cota, municipios aledaños o Bogotá', cumple: !wrongCity },
+        { label: 'Expectativa salarial ≤ $4.000.000', cumple: salaryRange === 'en_rango' },
+      ],
+      logros: hi
+        ? [
+            `${trips} manifiestos de ruta verificados en RNDC — supera el umbral mínimo requerido de 100 viajes`,
+            `Licencia C2 con ${licYears} años de expedición vigente y sin suspensiones registradas en RUNT`,
+            'Cero infracciones graves ni comparendos vigentes registrados en el sistema RUNT',
+          ]
+        : md
+        ? [
+            `${trips} viajes verificados en RNDC — requiere complementar manifiestos para alcanzar el umbral mínimo`,
+            'Licencia C2 vigente con período de expedición cercano al límite mínimo requerido',
+          ]
+        : [
+            'Historial de viajes en RNDC por debajo del umbral mínimo requerido de 100 manifiestos',
+          ],
+      senales: hi
+        ? ['Confirmar disponibilidad para turnos domingo a domingo con compensatorio previamente acordado']
+        : md
+        ? [
+            'Validar manifiestos de ruta faltantes directamente con empleadores anteriores',
+            score < 68 ? 'Confirmar manejo de caja Fuller con prueba técnica presencial' : 'Verificar experiencia documentada en control de unidades de refrigeración',
+          ]
+        : [
+            wrongCity
+              ? `Candidato residente en ${city} — fuera de la cobertura geográfica requerida (Cota / municipios aledaños / Bogotá)`
+              : 'Historial de viajes insuficiente — no supera el mínimo de 100 manifiestos verificables en RNDC',
+            salaryRange === 'fuera_de_rango'
+              ? 'Expectativa salarial por encima del presupuesto del cargo ($4.000.000)'
+              : 'Período de expedición de licencia inferior al mínimo requerido de 2 años',
+          ],
+    },
+  };
+}
+
+const vigiaCandidates: Candidate[] = [
+  _mkVigia('mvc-1',  'Carlos Jiménez',         91, _p(1,  'men'), 'CJ', '#8750F6', 'Bogotá',       '12 Años', "$3'200.000", 'en_rango'),
+  _mkVigia('mvc-2',  'Hernando Vargas',         88, _p(2,  'men'), 'HV', '#27BE69', 'Cota',         '10 Años', "$3'000.000", 'en_rango'),
+  _mkVigia('mvc-3',  'Luis Fernando Moreno',    85, _p(3,  'men'), 'LM', '#295BFF', 'Mosquera',     '8 Años',  "$3'400.000", 'en_rango'),
+  _mkVigia('mvc-4',  'Jhon Édison Pérez',       82, _p(4,  'men'), 'JP', '#F6A350', 'Bogotá',       '9 Años',  "$3'000.000", 'en_rango'),
+  _mkVigia('mvc-5',  'Gustavo Rodríguez',       79, _p(5,  'men'), 'GR', '#8750F6', 'Funza',        '7 Años',  "$3'200.000", 'en_rango'),
+  _mkVigia('mvc-6',  'Édgar Ríos',              76, _p(6,  'men'), 'ER', '#27BE69', 'Cota',         '6 Años',  "$3'500.000", 'en_rango'),
+  _mkVigia('mvc-7',  'Alexánder Suárez',        73, _p(7,  'men'), 'AS', '#295BFF', 'Madrid',       '5 Años',  "$3'100.000", 'en_rango'),
+  _mkVigia('mvc-8',  'William Castaño',         70, _p(8,  'men'), 'WC', '#F6A350', 'Bogotá',       '6 Años',  "$2'900.000", 'en_rango'),
+  _mkVigia('mvc-9',  'Orlando Medina',          67, _p(9,  'men'), 'OM', '#8750F6', 'Mosquera',     '5 Años',  "$3'300.000", 'en_rango'),
+  _mkVigia('mvc-10', 'Pablo Acosta',            64, _p(10, 'men'), 'PA', '#27BE69', 'Bogotá',       '5 Años',  "$3'000.000", 'en_rango'),
+  _mkVigia('mvc-11', 'Nelson Cruz',             61, _p(11, 'men'), 'NC', '#295BFF', 'Bogotá',       '4 Años',  "$3'200.000", 'en_rango'),
+  _mkVigia('mvc-12', 'William Huertas',         57, _p(12, 'men'), 'WH', '#F6A350', 'Bogotá',       '3 Años',  "$3'500.000", 'en_rango'),
+  _mkVigia('mvc-13', 'Fredy Gutiérrez',         54, _p(13, 'men'), 'FG', '#8750F6', 'Bucaramanga',  '4 Años',  "$3'000.000", 'en_rango'),
+  _mkVigia('mvc-14', 'Germán Parra',            50, _p(14, 'men'), 'GP', '#27BE69', 'Bogotá',       '4 Años',  "$4'500.000", 'fuera_de_rango'),
+  _mkVigia('mvc-15', 'Álvaro Ramos',            43, _p(15, 'men'), 'AR', '#295BFF', 'Barranquilla', '3 Años',  "$5'000.000", 'fuera_de_rango'),
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
 // EXPORTS ACTUALIZADOS
 // ══════════════════════════════════════════════════════════════════════════════
 
-import {
-  COMFANDI_VACANTES,
-  COMFANDI_DESCRIPTIONS,
-  getComfandiPipelineStages,
-  COMFANDI_CANDIDATES_BY_STAGE,
-  COMFANDI_ALL_CANDIDATES,
-} from './mock-comfandi';
 
 export const MOCK_VACANTES: Vacante[] = [
-  { id: 'mock-recep',    jobId: 'mock-recep',    status: 'activa',   title: 'Recepcionista',              area: ['Servicios', 'Salud'],           priority: 'media', progressLabel: 'Scoring',          progressPct: 10, total: 15, activos: 15, fecha: '05 Mar 2025' },
-  { id: 'mock-bodega',   jobId: 'mock-bodega',   status: 'activa',   title: 'Auxiliar de Bodega',         area: ['Operaciones', 'Logística'],     priority: 'alta',  progressLabel: 'Pre-screening IA', progressPct: 20, total: 15, activos: 15, fecha: '10 Mar 2025' },
-  { id: 'mock-th',       jobId: 'mock-th',       status: 'activa',   title: 'Analista de Talento Humano', area: ['RRHH', 'Talento'],              priority: 'alta',  progressLabel: 'Entrevistas',      progressPct: 40, total: 10, activos: 10, fecha: '15 Mar 2025' },
-  { id: 'mock-finanzas', jobId: 'mock-finanzas', status: 'activa',   title: 'Jefe de Finanzas',           area: ['Finanzas', 'Administración'],   priority: 'alta',  progressLabel: 'Evaluaciones',     progressPct: 60, total:  6, activos:  6, fecha: '20 Mar 2025' },
-  { id: 'mock-ventas',   jobId: 'mock-ventas',   status: 'cerrada',  title: 'Gerente de Ventas',          area: ['Comercial', 'Ventas'],          priority: 'alta',  progressLabel: 'Finalistas',       progressPct: 80, total:  3, activos:  3, fecha: '25 Mar 2025' },
-  ...COMFANDI_VACANTES,
+  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificados', progressPct: 10, total: 15, activos: 15, fecha: '03 May 2026' },
 ];
 
 export const MOCK_DESCRIPTIONS: Record<string, string> = {
-  'mock-recep':
-    'Buscamos una Recepcionista para nuestra clínica de especialidades médicas en Bogotá. Será el primer punto de contacto con pacientes y visitantes, responsable de la gestión de agenda, atención telefónica y coordinación administrativa. Requerimos excelente presentación, comunicación asertiva y manejo de herramientas ofimáticas.',
-  'mock-bodega':
-    'Auxiliar de Bodega para planta de producción masiva de termoformados en Medellín. Apoya la recepción, almacenamiento y despacho de materias primas y producto terminado. Trabaja en coordinación directa con el área de producción y logística para garantizar el flujo eficiente de inventarios y cumplir los indicadores de la operación.',
-  'mock-th':
-    'Analista de Talento Humano para apoyar los procesos de selección, contratación y seguimiento de personal en nuestra planta industrial. Gestiona el ciclo completo de reclutamiento, coordina entrevistas, aplica pruebas y da soporte operativo al área de RRHH. Requiere manejo de ATS, comunicación fluida y orientación al detalle.',
-  'mock-finanzas':
-    'Jefe de Finanzas para liderar el control financiero, presupuestal y de costos de la compañía. Reporta directamente a Gerencia General y coordina con las áreas de producción y operación para garantizar la salud financiera del negocio. Se requiere experiencia en manufactura, dominio de herramientas de análisis y capacidad de liderazgo.',
-  'mock-ventas':
-    'Gerente de Ventas para dirigir el equipo comercial B2B y garantizar el cumplimiento de metas en canales de distribución industrial. Responsable de la estrategia de crecimiento, seguimiento de KPIs, negociación con clientes clave y desarrollo del equipo. Se busca un perfil con liderazgo probado, orientación a resultados y visión estratégica.',
-  ...COMFANDI_DESCRIPTIONS,
+  'mock-vigia':
+    'Conductor de carga seca refrigerada y congelada para Transportes Vigía S.A.S. — empresa con 47 años de experiencia en el sector. Responsable del transporte seguro y puntual de mercancía a nivel nacional, conservando la cadena de frío, cumpliendo protocolos HSEQ, BASC y SARLAFT, y gestionando documentación de despacho y cumplidos en cada viaje. Jornada domingo a domingo, turnos de 12 horas. Sede base: vía Cota-Siberia.',
 };
 
 export function getMockPipelineStages(jobId: string): PipelineStage[] {
   const s = (id: string, label: string, badge: string, status: StageStatus, count: number, isAI: boolean): PipelineStage =>
     ({ id, label, stageBadge: badge, status, candidateCount: count, isAI, route: `/pipeline/${jobId}/${id}` });
   switch (jobId) {
-    case 'mock-recep':
+    case 'mock-vigia':
       return [
-        s('scoring',      'Scoring IA',        'Scoring',       'in_progress', 15, true),
-        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'not_started',       0, true),
-        s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started',       0, false),
-        s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'not_started',       0, false),
-        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
+        s('scoring',      'Verificados (RUNT/RNDC)', 'Verificados',   'in_progress', 15, true),
+        s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'not_started',  0, true),
+        s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started',  0, false),
+        s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started',  0, false),
+        s('finalistas',   'Finalistas',               'Finalistas',    'not_started',  0, false),
       ];
-    case 'mock-bodega':
-      return [
-        s('scoring',      'Scoring IA',        'Scoring',       'completed',   20, true),
-        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'in_progress', 15, true),
-        s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started',       0, false),
-        s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'not_started',       0, false),
-        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
-      ];
-    case 'mock-th':
-      return [
-        s('scoring',      'Scoring IA',        'Scoring',       'completed',   30, true),
-        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   18, true),
-        s('entrevistas',  'Entrevistas',        'Entrevistas',   'in_progress', 10, false),
-        s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'not_started',       0, false),
-        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
-      ];
-    case 'mock-finanzas':
-      return [
-        s('scoring',      'Scoring IA',        'Scoring',       'completed',   30, true),
-        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   20, true),
-        s('entrevistas',  'Entrevistas',        'Entrevistas',   'completed',   12, false),
-        s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'in_progress',  6, false),
-        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
-      ];
-    case 'mock-ventas':
     default:
       return [
-        s('scoring',      'Scoring IA',        'Scoring',       'completed',   50, true),
-        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   30, true),
-        s('entrevistas',  'Entrevistas',        'Entrevistas',   'completed',   25, false),
-        s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'completed',   10, false),
-        s('finalistas',   'Finalistas',         'Finalistas',    'in_progress',  3, false),
+        s('scoring',      'Verificados (RUNT/RNDC)', 'Verificados',   'not_started', 0, true),
+        s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'not_started', 0, true),
+        s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started', 0, false),
+        s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started', 0, false),
+        s('finalistas',   'Finalistas',               'Finalistas',    'not_started', 0, false),
       ];
   }
-  const comfStages = getComfandiPipelineStages(jobId);
-  if (comfStages) return comfStages;
-  return [
-    s('scoring',      'Scoring IA',        'Scoring',       'not_started', 0, true),
-    s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'not_started', 0, true),
-    s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started', 0, false),
-    s('evaluaciones', 'Evaluaciones',       'Evaluaciones',  'not_started', 0, false),
-    s('finalistas',   'Finalistas',         'Finalistas',    'not_started', 0, false),
-  ];
 }
 
 export const mockCandidatesByStage: Record<string, Partial<Record<string, Candidate[]>>> = {
-  'mock-recep':    { scoring: recepCandidates },
-  'mock-bodega':   { scoring: [...bodegaPreCandidates, ...bodegaScoreOnly], prescreening: bodegaPreCandidates },
-  'mock-th':       { scoring: [...thEntrevistasCandidates, ...thPreCandidates, ...thScoreOnly], prescreening: [...thEntrevistasCandidates, ...thPreCandidates], entrevistas: thEntrevistasCandidates },
-  'mock-finanzas': { scoring: [...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates, ...finScoreOnly], prescreening: [...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates], entrevistas: [...finEvalCandidates, ...finEntrevistasCandidates], evaluaciones: finEvalCandidates },
-  'mock-ventas':   { scoring: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates, ...venScoreOnly], prescreening: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates], entrevistas: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates], evaluaciones: [...venFinalistCandidates, ...venEvalCandidates] },
-  ...COMFANDI_CANDIDATES_BY_STAGE,
+  'mock-vigia': { scoring: vigiaCandidates },
 };
 
 export const mockCandidatesById: Record<string, Candidate> = [
-  ...recepCandidates,
-  ...bodegaPreCandidates, ...bodegaScoreOnly,
-  ...thEntrevistasCandidates, ...thPreCandidates, ...thScoreOnly,
-  ...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates, ...finScoreOnly,
-  ...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates, ...venScoreOnly,
-  ...COMFANDI_ALL_CANDIDATES,
+  ...vigiaCandidates,
 ].reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
 
 // ─── Mock Tech Test Feedback ──────────────────────────────────────────────────

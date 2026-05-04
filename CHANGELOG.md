@@ -11,6 +11,20 @@ _Sin cambios pendientes._
 
 ---
 
+## [PENDING] — 03 May 2026
+
+### Demo Vigía — Conductor C2 Carga Refrigerada
+- **`mock.ts`** — Reemplazadas todas las vacantes mock anteriores por una única vacante `mock-vigia`: "Conductor C2 Carga Refrigerada" para Transportes Vigía S.A.S., con 15 candidatos en etapa de entrada (Verificados RUNT/RNDC). Candidatos con datos realistas del sector transporte de carga: licencias C2, manifiestos de ruta RNDC, empresas colombianas reales.
+- **`mock.ts`** — `getMockPipelineStages`: simplificado para solo manejar `mock-vigia`; eliminados casos de vacantes anteriores
+- **`mock.ts`** — `mockCandidatesByStage` y `mockCandidatesById` actualizados para apuntar únicamente a `vigiaCandidates`
+- **`mock.ts`** — Renombrado `'Scoring IA'` → `'Verificados (RUNT/RNDC)'` en `getPipelineStages`
+- **`Sidebar.tsx`** — Etiqueta de stage `scoring` renombrada a `'Verificados (RUNT/RNDC)'`
+- **`Pipeline.tsx`** — `STAGE_META.scoring.label` y `stageBadge` actualizados a `'Verificados (RUNT/RNDC)'` / `'Verificados'`
+- **`CandidateOnepage.tsx`** — Título del acordeón de scoring actualizado a `'Verificados (RUNT/RNDC)'`
+- **`ValidationPipelineFilter.tsx`** — Chip label de scoring actualizado a `'Verificados'`
+
+---
+
 ## [a58c5da] — 04 Abr 2026
 
 ### Datos mock para demos
