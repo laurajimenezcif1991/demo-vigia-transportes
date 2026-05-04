@@ -7,6 +7,9 @@
 
 ## [Sin commitear]
 
+### Demo mode — solo mocks Vigía
+- **`useVacantes.ts`** — Eliminada llamada a API (`getCompanyDashboard`); hook devuelve directamente `MOCK_VACANTES` con logo y nombre de Vigía Transportes hardcodeados. Evita que jobs reales de otros clientes contaminen la lista de vacantes del demo.
+
 ### Logo Vigía Transportes
 - **`public/logo-vigia.png`** — Añadido logo oficial de Vigía Transportes S.A.S. a la carpeta de assets estáticos
 - **`Sidebar.tsx`, `HomeVacantes.tsx`, `PipelineContext.tsx`, `useVacantes.ts`** — Reemplazado logo Comfandi por logo Vigía en sidebar y lista de vacantes; actualizado alt text a `'Vigía Transportes'`
