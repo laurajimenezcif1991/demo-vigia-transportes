@@ -1307,13 +1307,13 @@ function PruebaManejoContent({ candidate, isPending }: { candidate: Candidate; i
         {/* Status footer */}
         <div style={{
           padding: '10px 24px',
-          background: 'var(--color-secondary-50)',
-          borderTop: '1px solid var(--color-neutral-200)',
+          background: 'var(--color-success-bg)',
+          borderTop: '1px solid var(--color-positive-200, #A2ECC2)',
           display: 'flex', alignItems: 'center', gap: '8px',
           fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px',
           color: 'var(--color-positive-700, #17723F)',
         }}>
-          <CheckCircle2 size={15} color="var(--color-success)" />
+          <CheckCircle2 size={15} color="var(--color-positive-600, #1F9854)" />
           Prueba confirmada — el candidato fue notificado por WhatsApp
         </div>
       </div>
