@@ -1225,107 +1225,40 @@ function ScoringContent({ candidate }: { candidate: Candidate }) {
 // ─── Prescreening content ─────────────────────────────────────────────────────
 
 function PrescreeningContent({ prescreening }: { prescreening: NonNullable<typeof candidates[0]['prescreeningAI']> }) {
-  const statusIcon = (s: 'ok' | 'warning' | 'neutral') =>
-    s === 'ok' ? <Check size={13} color="var(--color-success)" /> :
-    s === 'warning' ? <AlertTriangle size={13} color="var(--color-warning)" /> :
-    <span style={{ width: 13, height: 13, display: 'inline-block' }} />;
-
   return (
     <div style={{ paddingTop: '20px' }}>
-      {/* Resumen de la conversación */}
+      {/* Resumen de la conversación + entorno personal */}
       <div style={{ marginBottom: '24px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>
           Resumen de la conversación
         </h3>
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+        <p style={{ margin: '0 0 12px', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           {prescreening.resumen}
         </p>
-      </div>
-
-      {/* Entorno personal */}
-      {prescreening.entornoPersonal && prescreening.entornoPersonal.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Entorno personal
-          </h3>
-          <div style={{
-            border: '1.5px solid var(--color-neutral-200)',
-            borderRadius: '26px',
-            overflow: 'hidden',
-            background: 'var(--container-bg)',
-          }}>
+        {prescreening.entornoPersonal && prescreening.entornoPersonal.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {prescreening.entornoPersonal.map((item, i) => (
-              <div key={i} style={{
-                display: 'flex',
+              <span key={i} style={{
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '11px 24px',
-                borderBottom: i < prescreening.entornoPersonal!.length - 1 ? '1px solid var(--color-neutral-200)' : 'none',
-                background: i % 2 === 0 ? 'var(--color-surface-base)' : 'var(--color-neutral-50)',
+                gap: '5px',
+                background: item.status === 'warning' ? 'var(--color-warning-bg)' : 'var(--color-neutral-50)',
+                border: `1px solid ${item.status === 'warning' ? 'var(--color-warning)' : 'var(--color-neutral-200)'}`,
+                borderRadius: '20px',
+                padding: '4px 12px',
+                fontFamily: 'var(--font-display)',
+                fontSize: '12px',
+                color: item.status === 'warning' ? 'var(--color-warning-600, #A37800)' : 'var(--color-neutral-700)',
               }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: 'var(--color-neutral-700)' }}>
-                  {item.label}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '13px', color: 'var(--color-neutral-800)' }}>
-                  {statusIcon(item.status)}
-                  {item.value}
-                </span>
-              </div>
+                {item.status === 'ok' && <Check size={11} color="var(--color-success)" strokeWidth={2.5} />}
+                {item.status === 'warning' && <AlertTriangle size={11} color="var(--color-warning)" strokeWidth={2.5} />}
+                <span style={{ fontWeight: 600 }}>{item.label}:</span>
+                <span style={{ fontWeight: 400 }}>{item.value}</span>
+              </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Experiencia laboral */}
-      {prescreening.experienciaLaboral && prescreening.experienciaLaboral.length > 0 && (
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Experiencia laboral
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {prescreening.experienciaLaboral.map((exp, i) => (
-              <div key={i} style={{
-                border: '1.5px solid var(--color-neutral-200)',
-                borderRadius: 'var(--radius-xl)',
-                padding: '16px 24px',
-                background: 'var(--container-bg)',
-                display: 'flex',
-                gap: '16px',
-                alignItems: 'flex-start',
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '50%',
-                  background: 'var(--color-surface-accent)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <Briefcase size={16} color="var(--color-brand-accent)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', marginBottom: '2px' }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', color: 'var(--color-text-primary)' }}>
-                      {exp.rol}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '12px', color: 'var(--color-text-muted)', flexShrink: 0 }}>
-                      {exp.periodo}
-                    </span>
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: 'var(--color-brand-accent)', marginBottom: '6px' }}>
-                    {exp.empresa}
-                  </div>
-                  <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
-                    {exp.descripcion}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* No negociables with scores */}
       <div style={{ marginBottom: '24px' }}>
