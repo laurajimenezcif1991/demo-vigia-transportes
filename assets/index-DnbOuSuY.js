@@ -126,4 +126,114 @@ Please change the parent <Route path="${e}"> to <Route path="${e===`/`?`*`:`${e}
         .success-image {
           animation: fadeInSuccess 0.6s ease-in-out both;
         }
-      `}),(0,B.jsxs)(`div`,{style:{display:`flex`,flexDirection:`column`,alignItems:`center`,gap:`24px`,width:`100%`,maxWidth:`480px`},children:[(0,B.jsx)(`img`,{src:`/success.png`,alt:`Contraseña actualizada`,className:`success-image`,style:{width:`120px`,height:`auto`,display:`block`}}),(0,B.jsx)(`p`,{style:{margin:0,fontSize:`14px`,color:`var(--color-text-muted)`,textAlign:`center`},children:`Por seguridad, todas tus sesiones activas han sido cerradas.`}),(0,B.jsx)(`div`,{style:{width:`100%`},children:(0,B.jsx)(Mc,{onClick:()=>e(`/auth?tab=login`),children:`Iniciar Sesión`})})]})]})}function K({children:e}){let{user:t}=Qi();return t?(0,B.jsx)(B.Fragment,{children:e}):(0,B.jsx)(Nt,{to:`/auth`,replace:!0})}function Wc(){return(0,_.useEffect)(()=>{document.body.style.backgroundImage=`url(/demo-vigia-transportes/background-gradient.svg)`},[]),(0,B.jsx)(Zi,{children:(0,B.jsx)(ka,{children:(0,B.jsx)(xo,{children:(0,B.jsx)(ta,{children:(0,B.jsx)(wn,{basename:`/demo-vigia-transportes/`.replace(/\/$/,``),children:(0,B.jsxs)(Ft,{children:[(0,B.jsx)(M,{path:`/auth`,element:(0,B.jsx)(Fc,{})}),(0,B.jsx)(M,{path:`/auth/verify-email`,element:(0,B.jsx)(Rc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password`,element:(0,B.jsx)(zc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password/verify`,element:(0,B.jsx)(Vc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password/new-password`,element:(0,B.jsx)(Hc,{})}),(0,B.jsx)(M,{path:`/auth/password-updated`,element:(0,B.jsx)(Uc,{})}),(0,B.jsx)(M,{path:`/`,element:(0,B.jsx)(K,{children:(0,B.jsx)(aa,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ts,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/analizando`,element:(0,B.jsx)(K,{children:(0,B.jsx)(os,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/no-negociables`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ds,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/completar`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ys,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/canales`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ws,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/rcp`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Ms,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(wa,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(wa,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/scoring`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/prescreening`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/entrevistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/evaluaciones`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/candidate/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Mo,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/scoring`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/prescreening`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/entrevistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/evaluaciones`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/candidate/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Mo,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/finalist/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Rs,{})})}),(0,B.jsx)(M,{path:`/candidatos`,element:(0,B.jsx)(K,{children:(0,B.jsx)(oc,{})})}),(0,B.jsx)(M,{path:`/eval/:evalId`,element:(0,B.jsx)(Ys,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId`,element:(0,B.jsx)(dc,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId/test`,element:(0,B.jsx)(_c,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId/exito`,element:(0,B.jsx)(Sc,{})}),(0,B.jsx)(M,{path:`*`,element:(0,B.jsx)(Nt,{to:`/`,replace:!0})})]})})})})})})}(0,v.createRoot)(document.getElementById(`root`)).render((0,B.jsx)(_.StrictMode,{children:(0,B.jsx)(Wc,{})}));
+      `}),(0,B.jsxs)(`div`,{style:{display:`flex`,flexDirection:`column`,alignItems:`center`,gap:`24px`,width:`100%`,maxWidth:`480px`},children:[(0,B.jsx)(`img`,{src:`/success.png`,alt:`Contraseña actualizada`,className:`success-image`,style:{width:`120px`,height:`auto`,display:`block`}}),(0,B.jsx)(`p`,{style:{margin:0,fontSize:`14px`,color:`var(--color-text-muted)`,textAlign:`center`},children:`Por seguridad, todas tus sesiones activas han sido cerradas.`}),(0,B.jsx)(`div`,{style:{width:`100%`},children:(0,B.jsx)(Mc,{onClick:()=>e(`/auth?tab=login`),children:`Iniciar Sesión`})})]})]})}function K({children:e}){let{user:t}=Qi();return t?(0,B.jsx)(B.Fragment,{children:e}):(0,B.jsx)(Nt,{to:`/auth`,replace:!0})}var Wc=[{id:1,name:`Validación inicial`,heroText:`analizando candidatos`,steps:[`Analizando hoja de vida de candidatos`,`Realizando consultas en RUNT`,`Consultando manifiestos en el RNDC`]},{id:2,name:`Contacto`,heroText:`contactando candidatos`,steps:[`Contactando por WhatsApp`,`Llamando a candidatos para contarles sobre la vacante y confirmar datos`]},{id:3,name:`Agendamiento`,heroText:`agendando pruebas de manejo`,steps:[`Agendando prueba de manejo`]}],Gc=Wc.flatMap((e,t)=>e.steps.map((e,n)=>({phaseIndex:t,stepIndex:n}))),Kc=2800;function qc(){let[e,t]=(0,_.useState)(0),[n,r]=(0,_.useState)(0),i=(0,_.useRef)(null);(0,_.useEffect)(()=>{i.current&&i.current.play().catch(()=>{})},[]),(0,_.useEffect)(()=>{let e=setTimeout(()=>{t(e=>(e+1)%Gc.length),r(e=>e+1)},Kc);return()=>clearTimeout(e)},[e]);let{phaseIndex:a,stepIndex:o}=Gc[e],s=Wc[a];return(0,B.jsxs)(B.Fragment,{children:[(0,B.jsx)(`style`,{children:`
+        @keyframes alex-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes alex-spin-slow {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes alex-pulse-ring {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(135, 80, 246, 0.25); }
+          50% { box-shadow: 0 0 0 14px rgba(135, 80, 246, 0); }
+        }
+        @keyframes alex-fadein {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes alex-text-in {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes alex-dot {
+          0%, 80%, 100% { opacity: 0.25; transform: scale(0.7); }
+          40% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes alex-step-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.55; transform: scale(0.85); }
+        }
+
+        .alex-hero-text {
+          animation: alex-text-in 0.4s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        .alex-step-row {
+          animation: alex-fadein 0.35s ease both;
+        }
+        .alex-dot-1 { animation: alex-dot 1.3s ease-in-out infinite 0s; }
+        .alex-dot-2 { animation: alex-dot 1.3s ease-in-out infinite 0.22s; }
+        .alex-dot-3 { animation: alex-dot 1.3s ease-in-out infinite 0.44s; }
+
+        /* ── Responsive layout ── */
+        .alex-page {
+          min-height: 100vh;
+          font-family: var(--font-display);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 36px 20px 52px;
+        }
+        .alex-logo {
+          height: 52px;
+          width: auto;
+          object-fit: contain;
+          margin-bottom: 40px;
+        }
+        .alex-hero {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+          margin-bottom: 40px;
+          width: 100%;
+        }
+        /* Avatar wrapper — responsive square capped at 300px */
+        .alex-av-wrap {
+          position: relative;
+          width: min(300px, 82vw);
+          height: min(300px, 82vw);
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        /* White disc: 56% of wrapper */
+        .alex-white-disc {
+          position: absolute;
+          width: 56%;
+          height: 56%;
+          border-radius: 50%;
+          background: #ffffff;
+          z-index: 1;
+        }
+        /* Avatar: 50.7% of wrapper */
+        .alex-avatar-img {
+          position: absolute;
+          width: 50.7%;
+          height: 50.7%;
+          border-radius: 50%;
+          object-fit: cover;
+          z-index: 2;
+          animation: alex-pulse-ring 2.6s ease-in-out infinite;
+        }
+        .alex-phase-grid {
+          width: 100%;
+          max-width: 900px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 14px;
+          margin-bottom: 48px;
+        }
+        .alex-card {
+          border-radius: var(--radius-lg);
+          padding: 20px;
+          transition: opacity 0.4s ease, box-shadow 0.4s ease;
+        }
+        @media (max-width: 480px) {
+          .alex-page   { padding: 24px 16px 40px; }
+          .alex-logo   { height: 42px; margin-bottom: 28px; }
+          .alex-hero   { gap: 18px; margin-bottom: 28px; }
+          .alex-phase-grid { gap: 10px; margin-bottom: 36px; }
+          .alex-card   { padding: 16px; }
+        }
+      `}),(0,B.jsxs)(`div`,{className:`alex-page`,children:[(0,B.jsx)(`img`,{src:`/demo-vigia-transportes/logo-vigia.png`,alt:`Vigía Transportes`,className:`alex-logo`}),(0,B.jsxs)(`div`,{className:`alex-hero`,children:[(0,B.jsxs)(`div`,{className:`alex-av-wrap`,children:[(0,B.jsx)(`video`,{ref:i,autoPlay:!0,loop:!0,muted:!0,playsInline:!0,style:{position:`absolute`,inset:0,width:`100%`,height:`100%`,objectFit:`cover`,borderRadius:`50%`,zIndex:0,pointerEvents:`none`},children:(0,B.jsx)(`source`,{src:`/demo-vigia-transportes/video-alex-avatar.mp4`,type:`video/mp4`})}),(0,B.jsx)(`div`,{className:`alex-white-disc`}),(0,B.jsx)(`img`,{src:`/demo-vigia-transportes/alex-avatar.avif`,alt:`Alex`,className:`alex-avatar-img`})]}),(0,B.jsxs)(`div`,{style:{textAlign:`center`},children:[(0,B.jsxs)(`h1`,{style:{fontFamily:`var(--font-display)`,fontWeight:800,fontSize:`clamp(24px, 4vw, 30px)`,color:`var(--color-text-primary)`,letterSpacing:`-0.4px`,lineHeight:`1.3`,margin:`0 0 10px`,display:`flex`,flexWrap:`wrap`,alignItems:`center`,justifyContent:`center`,gap:`6px`},children:[(0,B.jsx)(`span`,{children:`Alex está`}),(0,B.jsx)(`span`,{className:`alex-hero-text`,style:{color:`var(--color-brand-accent)`},children:s.heroText},n),(0,B.jsxs)(`span`,{style:{display:`inline-flex`,gap:`4px`,alignItems:`center`,marginBottom:`2px`},children:[(0,B.jsx)(`span`,{className:`alex-dot-1`,style:{width:`5px`,height:`5px`,borderRadius:`50%`,background:`var(--color-brand-accent)`,display:`inline-block`}}),(0,B.jsx)(`span`,{className:`alex-dot-2`,style:{width:`5px`,height:`5px`,borderRadius:`50%`,background:`var(--color-brand-accent)`,display:`inline-block`}}),(0,B.jsx)(`span`,{className:`alex-dot-3`,style:{width:`5px`,height:`5px`,borderRadius:`50%`,background:`var(--color-brand-accent)`,display:`inline-block`}})]})]}),(0,B.jsx)(`p`,{style:{fontSize:`16px`,color:`var(--color-text-muted)`,fontWeight:500,margin:0},children:`Vacante Conductor C2 · Vigía Transportes`})]})]}),` `,(0,B.jsx)(`div`,{className:`alex-phase-grid`,children:Wc.map((e,t)=>{let n=t<a,r=t===a,i=t>a;return(0,B.jsxs)(`div`,{className:`alex-card`,style:{background:r?`rgba(255,255,255,0.92)`:n?`rgba(255,255,255,0.75)`:`rgba(255,255,255,0.4)`,border:r?`1.5px solid var(--color-border-focus)`:n?`1px solid rgba(39,190,105,0.35)`:`1px solid var(--color-border-default)`,boxShadow:r?`0 6px 28px rgba(135, 80, 246, 0.14)`:n?`0 2px 10px rgba(39,190,105,0.06)`:`0 2px 8px rgba(24,20,46,0.04)`,opacity:i?.52:1},children:[(0,B.jsxs)(`div`,{style:{display:`flex`,alignItems:`flex-start`,gap:`12px`,marginBottom:r||n?`16px`:`0`},children:[(0,B.jsx)(`div`,{style:{flexShrink:0,marginTop:`2px`},children:n?(0,B.jsx)(gr,{size:20,color:`var(--color-success)`}):r?(0,B.jsx)(`div`,{style:{width:`20px`,height:`20px`,borderRadius:`50%`,border:`3px solid var(--color-secondary-100)`,borderTopColor:`var(--color-brand-accent)`,animation:`alex-spin 0.85s linear infinite`}}):(0,B.jsx)(`div`,{style:{width:`20px`,height:`20px`,borderRadius:`50%`,border:`2px solid var(--color-border-default)`}})}),(0,B.jsxs)(`div`,{children:[(0,B.jsxs)(`div`,{style:{fontSize:`10px`,fontWeight:700,letterSpacing:`0.08em`,textTransform:`uppercase`,color:n?`var(--color-success)`:r?`var(--color-brand-accent)`:`var(--color-text-muted)`,marginBottom:`2px`},children:[`Fase `,e.id]}),(0,B.jsx)(`div`,{style:{fontSize:`17px`,fontWeight:700,color:i?`var(--color-text-muted)`:`var(--color-text-primary)`,lineHeight:1.3},children:e.name})]})]}),r&&(0,B.jsx)(`div`,{style:{display:`flex`,flexDirection:`column`,gap:`12px`},children:e.steps.slice(0,o+1).map((e,t)=>{let n=t<o,r=t===o;return(0,B.jsxs)(`div`,{className:`alex-step-row`,style:{display:`flex`,alignItems:`flex-start`,gap:`10px`},children:[n?(0,B.jsx)(gr,{size:16,color:`var(--color-brand-accent)`,style:{flexShrink:0,marginTop:`2px`}}):(0,B.jsx)(`span`,{style:{width:`16px`,height:`16px`,borderRadius:`50%`,background:r?`var(--color-brand-accent)`:`var(--color-neutral-200)`,display:`flex`,alignItems:`center`,justifyContent:`center`,flexShrink:0,marginTop:`2px`,animation:r?`alex-step-pulse 1.4s ease-in-out infinite`:`none`},children:(0,B.jsx)(`span`,{style:{width:`5px`,height:`5px`,borderRadius:`50%`,background:`#fff`,display:`block`}})}),(0,B.jsx)(`span`,{style:{fontSize:`15px`,fontWeight:n?500:r?600:400,color:n?`var(--color-text-secondary)`:r?`var(--color-text-primary)`:`var(--color-text-muted)`,lineHeight:1.45},children:e})]},e)})}),n&&(0,B.jsx)(`div`,{style:{display:`flex`,flexDirection:`column`,gap:`8px`},children:e.steps.map(e=>(0,B.jsxs)(`div`,{style:{display:`flex`,alignItems:`flex-start`,gap:`8px`},children:[(0,B.jsx)(gr,{size:14,color:`var(--color-success)`,style:{flexShrink:0,marginTop:`2px`}}),(0,B.jsx)(`span`,{style:{fontSize:`14px`,color:`var(--color-text-muted)`,fontWeight:400,lineHeight:1.45},children:e})]},e))})]},e.id)})}),(0,B.jsxs)(`div`,{style:{display:`flex`,alignItems:`center`,gap:`6px`,marginTop:`auto`},children:[(0,B.jsx)(`span`,{style:{fontSize:`13px`,color:`var(--color-text-muted)`,fontWeight:400},children:`Powered by`}),(0,B.jsx)(`img`,{src:`/demo-vigia-transportes/logo-unio.png`,alt:`Unio`,style:{height:`16px`,width:`auto`}})]})]}),` `]})}function Jc(){return(0,_.useEffect)(()=>{document.body.style.backgroundImage=`url(/demo-vigia-transportes/background-gradient.svg)`},[]),(0,B.jsx)(Zi,{children:(0,B.jsx)(ka,{children:(0,B.jsx)(xo,{children:(0,B.jsx)(ta,{children:(0,B.jsx)(wn,{basename:`/demo-vigia-transportes/`.replace(/\/$/,``),children:(0,B.jsxs)(Ft,{children:[(0,B.jsx)(M,{path:`/auth`,element:(0,B.jsx)(Fc,{})}),(0,B.jsx)(M,{path:`/auth/verify-email`,element:(0,B.jsx)(Rc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password`,element:(0,B.jsx)(zc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password/verify`,element:(0,B.jsx)(Vc,{})}),(0,B.jsx)(M,{path:`/auth/forgot-password/new-password`,element:(0,B.jsx)(Hc,{})}),(0,B.jsx)(M,{path:`/auth/password-updated`,element:(0,B.jsx)(Uc,{})}),(0,B.jsx)(M,{path:`/`,element:(0,B.jsx)(K,{children:(0,B.jsx)(aa,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ts,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/analizando`,element:(0,B.jsx)(K,{children:(0,B.jsx)(os,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/no-negociables`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ds,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/completar`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ys,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/canales`,element:(0,B.jsx)(K,{children:(0,B.jsx)(ws,{})})}),(0,B.jsx)(M,{path:`/vacante/nueva/rcp`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Ms,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(wa,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(wa,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/scoring`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/prescreening`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/entrevistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/evaluaciones`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/candidate/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Mo,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/process/:processId/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/scoring`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/prescreening`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/entrevistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/evaluaciones`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Za,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/finalistas`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Bs,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/candidate/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Mo,{})})}),(0,B.jsx)(M,{path:`/pipeline/:jobId/finalist/:candidateId`,element:(0,B.jsx)(K,{children:(0,B.jsx)(Rs,{})})}),(0,B.jsx)(M,{path:`/candidatos`,element:(0,B.jsx)(K,{children:(0,B.jsx)(oc,{})})}),(0,B.jsx)(M,{path:`/alex`,element:(0,B.jsx)(qc,{})}),(0,B.jsx)(M,{path:`/eval/:evalId`,element:(0,B.jsx)(Ys,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId`,element:(0,B.jsx)(dc,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId/test`,element:(0,B.jsx)(_c,{})}),(0,B.jsx)(M,{path:`/prueba/:evalId/exito`,element:(0,B.jsx)(Sc,{})}),(0,B.jsx)(M,{path:`*`,element:(0,B.jsx)(Nt,{to:`/`,replace:!0})})]})})})})})})}(0,v.createRoot)(document.getElementById(`root`)).render((0,B.jsx)(_.StrictMode,{children:(0,B.jsx)(Jc,{})}));
