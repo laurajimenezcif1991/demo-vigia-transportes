@@ -141,7 +141,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
         <img
           src={companyLogoUrl || '/logo-vigia.png'}
           alt={companyName || 'Vigía Transportes'}
-          style={{ maxHeight: '72px', maxWidth: '180px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
+          style={{ maxHeight: '144px', maxWidth: '180px', width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
         />
       </div>
 
