@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <title>Vigía Transportes — Demo</title>
     <script>
-      // SPA redirect for GitHub Pages
-      // Encodes the full path as a query param and redirects to index.html
+      // SPA redirect for GitHub Pages: preserve the full path as a query param
+      var segmentCount = 1; // number of path segments in the repo name (/demo-vigia-transportes)
       var l = window.location;
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 2).join('/') +
-        '/?p=' + encodeURIComponent(l.pathname.slice(1) + (l.search ? '&' + l.search.slice(1) : '') + l.hash)
+        l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?p=' +
+        encodeURIComponent(l.pathname.slice(1) + (l.search ? '&' + l.search.slice(1) : '') + l.hash)
       );
     </script>
   </head>

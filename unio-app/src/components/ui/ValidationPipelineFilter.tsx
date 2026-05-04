@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { asset } from '../../lib/asset';
 import type { PipelineStageKey } from '../../data/mock';
 
 export type FilterStage = PipelineStageKey | 'finalistas';
@@ -50,9 +51,9 @@ const statusLabel: Record<StageStatus, string> = {
 };
 
 const statusIcon: Record<StageStatus, string> = {
-  sin_iniciar: '/icons/lock.svg',
-  en_proceso:  '/icons/pencil.svg',
-  completado:  '/icons/check-circle.svg',
+  sin_iniciar: asset('/icons/lock.svg'),
+  en_proceso:  asset('/icons/pencil.svg'),
+  completado:  asset('/icons/check-circle.svg'),
 };
 
 /* ─── IA chip ─────────────────────────────────────────────────────────────── */
@@ -73,7 +74,7 @@ function IAChip() {
         lineHeight: 1,
       }}
     >
-      <img src="/icons/sparkles.svg" alt="" width={10} height={10} style={{ filter: 'invert(1)' }} />
+      <img src={asset('/icons/sparkles.svg')} alt="" width={10} height={10} style={{ filter: 'invert(1)' }} />
       IA
     </span>
   );
@@ -259,7 +260,7 @@ export default function ValidationPipelineFilter({
           }}
         >
           <img
-            src={finalistaLocked ? '/icons/lock.svg' : '/icons/check-circle.svg'}
+            src={finalistaLocked ? asset('/icons/lock.svg') : asset('/icons/check-circle.svg')}
             alt={finalistaLocked ? 'Sin iniciar' : 'Completado'}
             width={12}
             height={12}

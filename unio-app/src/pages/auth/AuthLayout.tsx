@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { asset } from '../../lib/asset';
 
 interface AuthLayoutProps {
   title: string;
@@ -35,7 +36,7 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
         {/* Logo */}
         <div style={{ marginBottom: '24px' }}>
           <img
-            src="/unio-SM.png"
+            src={asset('/unio-SM.png')}
             alt="Unio"
             style={{ height: '64px', width: 'auto', display: 'block' }}
           />

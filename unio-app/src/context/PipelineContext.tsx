@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { asset } from '../lib/asset';
 import type { PipelineStageKey } from '../data/mock';
 
 interface PipelineContextValue {
@@ -27,7 +28,7 @@ const PipelineContext = createContext<PipelineContextValue>({
   setJobId: () => {},
   selectionProcessId: '',
   setSelectionProcessId: () => {},
-  companyLogoUrl: '/logo-vigia.png',
+  companyLogoUrl: asset('/logo-vigia.png'),
   setCompanyLogoUrl: () => {},
   companyName: '',
   setCompanyName: () => {},
@@ -38,7 +39,7 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
   const [progressStage, setProgressStage] = useState<PipelineStageKey>('scoring');
   const [jobId, setJobId] = useState<string>('v1');
   const [selectionProcessId, setSelectionProcessId] = useState<string>('');
-  const [companyLogoUrl, setCompanyLogoUrl] = useState<string>('/logo-vigia.png');
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string>(asset('/logo-vigia.png'));
   const [companyName, setCompanyName] = useState<string>('');
 
   // Finalistas unlocks when Entrevistas or later is the progress stage

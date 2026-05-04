@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { asset } from '../lib/asset';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -510,7 +511,7 @@ export default function CandidateOnepage() {
                   Hoja de vida
                 </Button>
                 {(candidate as Candidate).runtVerification && (
-                  <Button variant="outline" size="sm" onClick={() => window.open('/manifiestos-vigia.pdf', '_blank')}>
+                  <Button variant="outline" size="sm" onClick={() => window.open(asset('/manifiestos-vigia.pdf'), '_blank')}>
                     <ExternalLink size={14} />
                     Ver manifiestos
                   </Button>

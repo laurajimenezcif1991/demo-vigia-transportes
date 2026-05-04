@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import { asset } from '../../lib/asset';
 import {
   Users,
   Filter,
@@ -142,7 +143,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       {/* Logo */}
       <div style={{ padding: '20px 20px 16px' }}>
         <img
-          src={companyLogoUrl || '/logo-vigia.png'}
+          src={companyLogoUrl || asset('/logo-vigia.png')}
           alt={companyName || 'Vigía Transportes'}
           style={{ maxHeight: '56px', maxWidth: '168px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
         />
@@ -197,7 +198,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
           <span>Powered by</span>
-          <img src="/logo-unio.png" alt="Unio" style={{ height: '16px', width: 'auto' }} />
+          <img src={asset('/logo-unio.png')} alt="Unio" style={{ height: '16px', width: 'auto' }} />
         </div>
       </div>
     </aside>

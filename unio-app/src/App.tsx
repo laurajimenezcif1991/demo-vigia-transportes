@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import HomeVacantes from './pages/HomeVacantes';
 import Pipeline from './pages/Pipeline';
 import CandidateList from './pages/CandidateList';
@@ -29,12 +30,16 @@ import { PipelineProvider } from './context/PipelineContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 export default function App() {
+  useEffect(() => {
+    document.body.style.backgroundImage = `url(${import.meta.env.BASE_URL}background-gradient.svg)`;
+  }, []);
+
   return (
     <AuthProvider>
       <CandidateStatusProvider>
         <InterviewProvider>
           <PipelineProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
             {/* ── Auth (public) ── */}
             <Route path="/auth" element={<AuthPage />} />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Vacante } from '../data/mock';
 import { MOCK_VACANTES } from '../data/mock';
 import type { Job } from '../types/dashboard';
+import { asset } from '../lib/asset';
 
 interface UseVacantesResult {
   vacantes: Vacante[];
@@ -27,7 +28,7 @@ export function useVacantes(): UseVacantesResult {
   return {
     vacantes,
     rawJobs,
-    logoUrl: '/logo-vigia.png',
+    logoUrl: asset('/logo-vigia.png'),
     companyName: 'Vigía Transportes',
     loading,
     error: null,

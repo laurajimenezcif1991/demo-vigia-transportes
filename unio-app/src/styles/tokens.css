@@ -169,7 +169,6 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
   color: var(--color-text-primary);
   background-color: #ffffff;
-  background-image: url('/background-gradient.svg');
   background-attachment: fixed;
   background-size: cover;
   background-repeat: no-repeat;

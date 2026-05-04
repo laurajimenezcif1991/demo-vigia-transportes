@@ -46,9 +46,17 @@ const MOCK_OTP = '925782';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const DEMO_USER: AuthUser = {
+  id: 'demo-vigia',
+  email: 'demo@vigia-transportes.com',
+  name: 'Equipo Vigía',
+  companyId: 'vigia',
+  token: 'demo-token',
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(DEMO_USER);
+  const [token, setToken] = useState<string | null>('demo-token');
   const [pendingEmail, setPendingEmail] = useState('');
 
   const login = async (

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { asset } from '../lib/asset';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -161,11 +162,11 @@ export default function HomeVacantes() {
       >
         {/* Left: Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <img src={logoUrl || '/logo-vigia.png'} alt={companyName || 'Vigía Transportes'} style={{ maxHeight: '52px', maxWidth: '200px', width: 'auto', height: 'auto', objectFit: 'contain' }} />
+          <img src={logoUrl || asset('/logo-vigia.png')} alt={companyName || 'Vigía Transportes'} style={{ maxHeight: '52px', maxWidth: '200px', width: 'auto', height: 'auto', objectFit: 'contain' }} />
           <div style={{ width: '1px', height: '32px', background: 'var(--color-border-default)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
             <span>Powered by</span>
-            <img src="/logo-unio.png" alt="Unio" style={{ height: '14px', width: 'auto' }} />
+            <img src={asset('/logo-unio.png')} alt="Unio" style={{ height: '14px', width: 'auto' }} />
           </div>
         </div>
 
