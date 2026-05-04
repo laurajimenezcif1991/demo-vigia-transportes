@@ -2322,6 +2322,13 @@ export const MOCK_INITIAL_STATUSES: Record<string, Partial<Record<string, Record
       'mvc-19': 'descartado',  // 40 — rojo
       'mvc-20': 'descartado',  // 34 — rojo
     },
+    prescreening: {
+      'mvc-6':  'continua',    // 76 — verde
+      'mvc-7':  'continua',    // 72 — verde
+      'mvc-8':  'por_validar', // 66 — amarillo
+      'mvc-9':  'por_validar', // 54 — amarillo
+      'mvc-10': 'descartado',  // 49 — rojo
+    },
   },
 };
 
