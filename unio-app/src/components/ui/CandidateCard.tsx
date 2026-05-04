@@ -123,8 +123,8 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Pending chip — shown for newly advanced candidates */}
-        {isPending && (
+        {/* Pending chip — shown for newly advanced candidates (suppressed when prueba manejo badge handles it) */}
+        {isPending && !showPruebaManejo && (
           <div
             style={{
               display: 'inline-flex',
@@ -259,9 +259,9 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
         </p>
 
         {/* Prueba de manejo badge — only shown in evaluaciones stage */}
-        {showPruebaManejo && candidate.pruebaManejo && (
+        {showPruebaManejo && (
           <div style={{ marginTop: '8px' }}>
-            {candidate.pruebaManejo.status === 'agendada' ? (
+            {candidate.pruebaManejo?.status === 'agendada' ? (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 background: 'var(--color-success-bg)',
