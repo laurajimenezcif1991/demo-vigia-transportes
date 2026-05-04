@@ -96,7 +96,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       label: 'Pre screening IA',
       Icon: AlignLeft,
       path: `${stageBase}/prescreening`,
-      locked: progressIdx < 1,            // requiere haber llegado a prescreening
+      locked: isMockJob ? false : progressIdx < 1,
     },
     ...(!isMockJob ? [{
       id: 'entrevistas',
@@ -110,14 +110,14 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       label: isMockJob ? 'Prueba de manejo' : 'Evaluaciones',
       Icon: CheckSquare,
       path: `${stageBase}/evaluaciones`,
-      locked: progressIdx < (isMockJob ? 2 : 3),
+      locked: isMockJob ? false : progressIdx < 3,
     },
     ...[{
         id: 'finalistas',
         label: 'Finalistas',
         Icon: CheckCheck,
         path: `${stageBase}/finalistas`,
-        locked: finalistasLocked,          // desbloquea en entrevistas Y cuando hay finalistas
+        locked: isMockJob ? false : finalistasLocked,
       }],
   ];
 

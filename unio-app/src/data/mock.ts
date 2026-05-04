@@ -2251,6 +2251,11 @@ const vigiaCandidates: Candidate[] = [
   _mkVigia('mvc-13', 'Fredy Gutiérrez',         54, _p(13, 'men'), 'FG', '#8750F6', 'Bucaramanga',  '4 Años',  "$3'000.000", 'en_rango'),
   _mkVigia('mvc-14', 'Germán Parra',            50, _p(14, 'men'), 'GP', '#27BE69', 'Bogotá',       '4 Años',  "$4'500.000", 'fuera_de_rango'),
   _mkVigia('mvc-15', 'Álvaro Ramos',            43, _p(15, 'men'), 'AR', '#295BFF', 'Barranquilla', '3 Años',  "$5'000.000", 'fuera_de_rango'),
+  _mkVigia('mvc-16', 'Ricardo Bermúdez',        48, _p(1,  'men'), 'RB', '#F65078', 'Bogotá',       '3 Años',  "$3'100.000", 'en_rango'),
+  _mkVigia('mvc-17', 'Javier Morales',          45, _p(2,  'men'), 'JM', '#27BE69', 'Soacha',       '2 Años',  "$3'000.000", 'en_rango'),
+  _mkVigia('mvc-18', 'Edwin Salcedo',           42, _p(3,  'men'), 'ES', '#F6A350', 'Bogotá',       '2 Años',  "$3'200.000", 'en_rango'),
+  _mkVigia('mvc-19', 'Raúl Quintero',           39, _p(4,  'men'), 'RQ', '#295BFF', 'Facatativá',   '2 Años',  "$3'500.000", 'fuera_de_rango'),
+  _mkVigia('mvc-20', 'Andrés Castellanos',      36, _p(5,  'men'), 'AC', '#8750F6', 'Bogotá',       '1 Año',   "$2'800.000", 'en_rango'),
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2259,7 +2264,7 @@ const vigiaCandidates: Candidate[] = [
 
 
 export const MOCK_VACANTES: Vacante[] = [
-  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificación', progressPct: 10, total: 15, activos: 15, fecha: '03 May 2026' },
+  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificación', progressPct: 10, total: 20, activos: 20, fecha: '03 May 2026' },
 ];
 
 export const MOCK_DESCRIPTIONS: Record<string, string> = {
@@ -2273,7 +2278,7 @@ export function getMockPipelineStages(jobId: string): PipelineStage[] {
   switch (jobId) {
     case 'mock-vigia':
       return [
-               s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',  'in_progress',  5, true),
+               s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',  'in_progress', 10, true),
                s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'in_progress',  5, true),
                s('evaluaciones', 'Prueba de manejo',         'Prueba manejo', 'in_progress',  5, false),
                s('finalistas',   'Finalistas',               'Finalistas',    'not_started',  0, false),
@@ -2297,9 +2302,8 @@ export const mockCandidatesByStage: Record<string, Partial<Record<string, Candid
   'mock-vigia': { scoring: vigiaScoring, prescreening: vigiaPrescreening, evaluaciones: vigiaEvaluaciones },
 };
 
-export const mockCandidatesById: Record<string, Candidate> = [
-  ...vigiaCandidates,
-].reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
+export const mockCandidatesById: Record<string, Candidate> = vigiaCandidates
+  .reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
 
 // ─── Mock Tech Test Feedback ──────────────────────────────────────────────────
 // Pre-seeded into localStorage by useCandidateDetail when candidate is loaded.
