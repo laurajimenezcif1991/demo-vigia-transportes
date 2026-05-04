@@ -11,7 +11,8 @@ import { useCandidateStatus } from '../context/CandidateStatusContext';
 import { usePipeline } from '../context/PipelineContext';
 import { useCandidates } from '../hooks/useCandidates';
 import { useVacantes } from '../hooks/useVacantes';
-import { mockCandidatesByStage, mockCandidatesById } from '../data/mock';
+import { mockCandidatesByStage, mockCandidatesById, MOCK_INITIAL_STATUSES } from '../data/mock';
+import type { CandidateStatus } from '../context/CandidateStatusContext';
 import { useMockStageState } from '../hooks/useMockStageState';
 
 type FilterTab = 'todos' | 'high' | 'mid' | 'low';
@@ -56,6 +57,15 @@ export default function CandidateList() {
   useEffect(() => {
     setJobId(jobId);
   }, [jobId, setJobId]);
+
+  // Seed pre-defined statuses for mock jobs on first load
+  useEffect(() => {
+    const stageStatuses = MOCK_INITIAL_STATUSES[jobId]?.[currentStage];
+    if (!stageStatuses) return;
+    Object.entries(stageStatuses).forEach(([candidateId, status]) => {
+      setStatuses([candidateId], currentStage, status as CandidateStatus);
+    });
+  }, [jobId, currentStage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (processId) setSelectionProcessId(processId);

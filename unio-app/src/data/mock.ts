@@ -2307,6 +2307,24 @@ export const mockCandidatesByStage: Record<string, Partial<Record<string, Candid
 export const mockCandidatesById: Record<string, Candidate> = vigiaCandidates
   .reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
 
+// Pre-seeded statuses shown by default in each stage list (candidateId → status)
+export const MOCK_INITIAL_STATUSES: Record<string, Partial<Record<string, Record<string, string>>>> = {
+  'mock-vigia': {
+    scoring: {
+      'mvc-11': 'continua',    // 81 — verde
+      'mvc-12': 'continua',    // 78 — verde
+      'mvc-13': 'continua',    // 74 — verde
+      'mvc-14': 'por_validar', // 70 — amarillo
+      'mvc-15': 'por_validar', // 63 — amarillo
+      'mvc-16': 'por_validar', // 55 — amarillo
+      'mvc-17': 'descartado',  // 50 — rojo
+      'mvc-18': 'descartado',  // 45 — rojo
+      'mvc-19': 'descartado',  // 40 — rojo
+      'mvc-20': 'descartado',  // 34 — rojo
+    },
+  },
+};
+
 // ─── Mock Tech Test Feedback ──────────────────────────────────────────────────
 // Pre-seeded into localStorage by useCandidateDetail when candidate is loaded.
 export const mockTechFeedback: Record<string, TechTestFeedback> = {
