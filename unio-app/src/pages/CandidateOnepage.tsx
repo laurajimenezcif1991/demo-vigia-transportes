@@ -1007,14 +1007,14 @@ function ScoringContent({ candidate }: { candidate: Candidate }) {
             style={{
               display: 'grid',
               gridTemplateColumns: '1fr 245px',
-              background: '#f7f7f8',
-              borderBottom: '1px solid #d4d4d5',
+              background: 'var(--color-brand-primary)',
+              borderBottom: '1px solid var(--color-neutral-200)',
             }}
           >
-            <div style={{ padding: '11px 24px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539' }}>
+            <div style={{ padding: '11px 24px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: 'var(--color-text-inverse)' }}>
               No negociables
             </div>
-            <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', textAlign: 'center', borderLeft: '1px solid #d4d4d5' }}>
+            <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: 'var(--color-text-inverse)', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
               ¿Cumple?
             </div>
           </div>
@@ -1252,17 +1252,17 @@ function PrescreeningContent({ prescreening }: { prescreening: NonNullable<typeo
             style={{
               display: 'grid',
               gridTemplateColumns: '220px 190px 1fr',
-              background: '#f7f7f8',
-              borderBottom: '1px solid #d4d4d5',
+              background: 'var(--color-brand-primary)',
+              borderBottom: '1px solid var(--color-neutral-200)',
             }}
           >
-            <div style={{ padding: '11px 24px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539' }}>
+            <div style={{ padding: '11px 24px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: 'var(--color-text-inverse)' }}>
               No negociables
             </div>
-            <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', textAlign: 'center', borderLeft: '1px solid #d4d4d5' }}>
+            <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: 'var(--color-text-inverse)', textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
               Evaluación
             </div>
-            <div style={{ padding: '11px 16px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', borderLeft: '1px solid #d4d4d5' }}>
+            <div style={{ padding: '11px 16px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: 'var(--color-text-inverse)', borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
               Detalle / Evidencia
             </div>
           </div>
