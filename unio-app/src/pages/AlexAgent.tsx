@@ -94,10 +94,6 @@ export default function AlexAgent() {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.55; transform: scale(0.85); }
         }
-        @keyframes alex-glow {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.06); }
-        }
 
         .alex-hero-text {
           animation: alex-text-in 0.4s cubic-bezier(0.22,1,0.36,1) both;
@@ -108,38 +104,94 @@ export default function AlexAgent() {
         .alex-dot-1 { animation: alex-dot 1.3s ease-in-out infinite 0s; }
         .alex-dot-2 { animation: alex-dot 1.3s ease-in-out infinite 0.22s; }
         .alex-dot-3 { animation: alex-dot 1.3s ease-in-out infinite 0.44s; }
+
+        /* ── Responsive layout ── */
+        .alex-page {
+          min-height: 100vh;
+          font-family: var(--font-display);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 36px 20px 52px;
+        }
+        .alex-logo {
+          height: 52px;
+          width: auto;
+          object-fit: contain;
+          margin-bottom: 40px;
+        }
+        .alex-hero {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
+          margin-bottom: 40px;
+          width: 100%;
+        }
+        /* Avatar wrapper — responsive square capped at 300px */
+        .alex-av-wrap {
+          position: relative;
+          width: min(300px, 82vw);
+          height: min(300px, 82vw);
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        /* White disc: 56% of wrapper */
+        .alex-white-disc {
+          position: absolute;
+          width: 56%;
+          height: 56%;
+          border-radius: 50%;
+          background: #ffffff;
+          z-index: 1;
+        }
+        /* Avatar: 50.7% of wrapper */
+        .alex-avatar-img {
+          position: absolute;
+          width: 50.7%;
+          height: 50.7%;
+          border-radius: 50%;
+          object-fit: cover;
+          z-index: 2;
+          animation: alex-pulse-ring 2.6s ease-in-out infinite;
+        }
+        .alex-phase-grid {
+          width: 100%;
+          max-width: 900px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 14px;
+          margin-bottom: 48px;
+        }
+        .alex-card {
+          border-radius: var(--radius-lg);
+          padding: 20px;
+          transition: opacity 0.4s ease, box-shadow 0.4s ease;
+        }
+        @media (max-width: 480px) {
+          .alex-page   { padding: 24px 16px 40px; }
+          .alex-logo   { height: 42px; margin-bottom: 28px; }
+          .alex-hero   { gap: 18px; margin-bottom: 28px; }
+          .alex-phase-grid { gap: 10px; margin-bottom: 36px; }
+          .alex-card   { padding: 16px; }
+        }
       `}</style>
 
-      <div
-        style={{
-          minHeight: '100vh',
-          fontFamily: 'var(--font-display)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '40px 24px 56px',
-        }}
-      >
+      <div className="alex-page">
         {/* ── Logo Vigía ───────────────────────────────────────────────── */}
         <img
           src={`${import.meta.env.BASE_URL}logo-vigia.png`}
           alt="Vigía Transportes"
-          style={{ height: '56px', width: 'auto', objectFit: 'contain', marginBottom: '52px' }}
+          className="alex-logo"
         />
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '28px',
-            marginBottom: '52px',
-          }}
-        >
+        <div className="alex-hero">
           {/* Avatar + video background */}
-          <div style={{ position: 'relative', width: '200px', height: '200px', flexShrink: 0 }}>
-            {/* Video glow animation behind avatar */}
+          <div className="alex-av-wrap">
+            {/* Video — masked to circle */}
             <video
               ref={videoRef}
               autoPlay
@@ -148,17 +200,13 @@ export default function AlexAgent() {
               playsInline
               style={{
                 position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '310px',
-                height: '310px',
+                inset: 0,
+                width: '100%',
+                height: '100%',
                 objectFit: 'cover',
                 borderRadius: '50%',
-                opacity: 0.55,
                 zIndex: 0,
                 pointerEvents: 'none',
-                animation: 'alex-glow 3s ease-in-out infinite',
               }}
             >
               <source
@@ -167,45 +215,14 @@ export default function AlexAgent() {
               />
             </video>
 
-            {/* Spinning gradient ring */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: '-3px',
-                borderRadius: '50%',
-                background:
-                  'linear-gradient(135deg, #9A7CF7, #FDD83F, #F05899, #3DAC56, #00ADFE)',
-                animation: 'alex-spin-slow 5s linear infinite',
-                zIndex: 1,
-              }}
-            />
-
-            {/* White buffer ring */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: '0',
-                borderRadius: '50%',
-                background: '#ffffff',
-                zIndex: 2,
-              }}
-            />
+            {/* White disc — outline ring between video and avatar */}
+            <div className="alex-white-disc" />
 
             {/* Avatar image */}
             <img
               src={`${import.meta.env.BASE_URL}alex-avatar.avif`}
               alt="Alex"
-              style={{
-                position: 'absolute',
-                top: '5px',
-                left: '5px',
-                width: 'calc(100% - 10px)',
-                height: 'calc(100% - 10px)',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                zIndex: 3,
-                animation: 'alex-pulse-ring 2.6s ease-in-out infinite',
-              }}
+              className="alex-avatar-img"
             />
           </div>
 
@@ -215,7 +232,7 @@ export default function AlexAgent() {
               style={{
                 fontFamily: 'var(--font-display)',
                 fontWeight: 800,
-                fontSize: 'clamp(20px, 4vw, 26px)',
+                fontSize: 'clamp(24px, 4vw, 30px)',
                 color: 'var(--color-text-primary)',
                 letterSpacing: '-0.4px',
                 lineHeight: '1.3',
@@ -278,7 +295,7 @@ export default function AlexAgent() {
 
             <p
               style={{
-                fontSize: '14px',
+                fontSize: '16px',
                 color: 'var(--color-text-muted)',
                 fontWeight: 500,
                 margin: 0,
@@ -287,19 +304,10 @@ export default function AlexAgent() {
               Vacante Conductor C2 · Vigía Transportes
             </p>
           </div>
-        </div>
+        </div> {/* .alex-hero */}
 
         {/* ── Phase cards ──────────────────────────────────────────────── */}
-        <div
-          style={{
-            width: '100%',
-            maxWidth: '900px',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '16px',
-            marginBottom: '56px',
-          }}
-        >
+        <div className="alex-phase-grid">
           {PHASES.map((phase, pi) => {
             const isCompleted = pi < currentPhaseIndex;
             const isActive = pi === currentPhaseIndex;
@@ -308,26 +316,24 @@ export default function AlexAgent() {
             return (
               <div
                 key={phase.id}
+                className="alex-card"
                 style={{
                   background: isActive
                     ? 'rgba(255,255,255,0.92)'
                     : isCompleted
                     ? 'rgba(255,255,255,0.75)'
                     : 'rgba(255,255,255,0.4)',
-                  borderRadius: 'var(--radius-lg)',
                   border: isActive
                     ? '1.5px solid var(--color-border-focus)'
                     : isCompleted
                     ? '1px solid rgba(39,190,105,0.35)'
                     : '1px solid var(--color-border-default)',
-                  padding: '24px',
                   boxShadow: isActive
                     ? '0 6px 28px rgba(135, 80, 246, 0.14)'
                     : isCompleted
                     ? '0 2px 10px rgba(39,190,105,0.06)'
                     : '0 2px 8px rgba(24,20,46,0.04)',
                   opacity: isPending ? 0.52 : 1,
-                  transition: 'opacity 0.4s ease, box-shadow 0.4s ease',
                 }}
               >
                 {/* Phase label + status icon */}
@@ -386,12 +392,12 @@ export default function AlexAgent() {
                     </div>
                     <div
                       style={{
-                        fontSize: '15px',
-                        fontWeight: 700,
-                        color: isPending
-                          ? 'var(--color-text-muted)'
-                          : 'var(--color-text-primary)',
-                        lineHeight: 1.3,
+                    fontSize: '17px',
+                    fontWeight: 700,
+                    color: isPending
+                      ? 'var(--color-text-muted)'
+                      : 'var(--color-text-primary)',
+                    lineHeight: 1.3,
                       }}
                     >
                       {phase.name}
@@ -449,8 +455,8 @@ export default function AlexAgent() {
                           )}
                           <span
                             style={{
-                              fontSize: '13px',
-                              fontWeight: isDone ? 500 : isStepActive ? 600 : 400,
+                            fontSize: '15px',
+                            fontWeight: isDone ? 500 : isStepActive ? 600 : 400,
                               color: isDone
                                 ? 'var(--color-text-secondary)'
                                 : isStepActive
@@ -482,10 +488,10 @@ export default function AlexAgent() {
                         />
                         <span
                           style={{
-                            fontSize: '12px',
-                            color: 'var(--color-text-muted)',
-                            fontWeight: 400,
-                            lineHeight: 1.45,
+                          fontSize: '14px',
+                          color: 'var(--color-text-muted)',
+                          fontWeight: 400,
+                          lineHeight: 1.45,
                           }}
                         >
                           {step}
@@ -517,7 +523,7 @@ export default function AlexAgent() {
             style={{ height: '16px', width: 'auto' }}
           />
         </div>
-      </div>
+      </div> {/* .alex-page */}
     </>
   );
 }
