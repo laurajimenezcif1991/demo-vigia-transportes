@@ -573,7 +573,7 @@ export default function CandidateOnepage() {
           <div ref={scoringSectionRef} style={{ scrollMarginTop: 24 }}>
             <AccordionSection
               number={1}
-              title="Verificados (RUNT/RNDC)"
+              title="Verificación (RUNT/RNDC)"
               score={candidate.scoringAI.score}
               statusText={
                 candidate.scoringAI.status === 'rechazado'

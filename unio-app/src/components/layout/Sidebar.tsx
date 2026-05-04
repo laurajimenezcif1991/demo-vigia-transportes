@@ -83,7 +83,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
   const stageItems = [
     {
       id: 'scoring',
-      label: 'Verificados (RUNT/RNDC)',
+      label: 'Verificación (RUNT/RNDC)',
       Icon: Search,
       path: `${stageBase}/scoring`,
       locked: false,                      // siempre activo: es la primera fase
@@ -141,7 +141,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
         <img
           src={companyLogoUrl || '/logo-vigia.png'}
           alt={companyName || 'Vigía Transportes'}
-          style={{ maxHeight: '56px', maxWidth: '168px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
+          style={{ maxHeight: '72px', maxWidth: '180px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
         />
       </div>
 

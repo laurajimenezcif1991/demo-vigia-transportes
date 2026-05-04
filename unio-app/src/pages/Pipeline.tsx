@@ -39,7 +39,7 @@ const stageBadgeVariants: Record<string, 'scoring' | 'prescreening' | 'entrevist
 const AI_STAGES = new Set(['scoring', 'prescreening']);
 
 const STAGE_META: Record<string, { label: string; stageBadge: string }> = {
-  scoring:      { label: 'Verificados (RUNT/RNDC)', stageBadge: 'Verificados' },
+  scoring:      { label: 'Verificación (RUNT/RNDC)', stageBadge: 'Verificación' },
   prescreening: { label: 'Pre-entrevista IA',        stageBadge: 'Pre screening' },
   entrevistas:  { label: 'Entrevistas',              stageBadge: 'Entrevistas' },
   evaluaciones: { label: 'Evaluaciones',             stageBadge: 'Evaluaciones' },

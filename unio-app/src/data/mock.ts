@@ -166,8 +166,8 @@ export const vacantes: Vacante[] = [
 export const getPipelineStages = (jobId: string): PipelineStage[] => [
   {
     id: 'scoring',
-    label: 'Verificados (RUNT/RNDC)',
-    stageBadge: 'Verificados',
+    label: 'Verificación (RUNT/RNDC)',
+    stageBadge: 'Verificación',
     status: 'completed',
     candidateCount: 28,
     isAI: true,
@@ -2155,7 +2155,7 @@ const vigiaCandidates: Candidate[] = [
 
 
 export const MOCK_VACANTES: Vacante[] = [
-  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificados', progressPct: 10, total: 15, activos: 15, fecha: '03 May 2026' },
+  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificación', progressPct: 10, total: 15, activos: 15, fecha: '03 May 2026' },
 ];
 
 export const MOCK_DESCRIPTIONS: Record<string, string> = {
@@ -2169,7 +2169,7 @@ export function getMockPipelineStages(jobId: string): PipelineStage[] {
   switch (jobId) {
     case 'mock-vigia':
       return [
-        s('scoring',      'Verificados (RUNT/RNDC)', 'Verificados',   'in_progress', 15, true),
+        s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',   'in_progress', 15, true),
         s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'not_started',  0, true),
         s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started',  0, false),
         s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started',  0, false),
@@ -2177,7 +2177,7 @@ export function getMockPipelineStages(jobId: string): PipelineStage[] {
       ];
     default:
       return [
-        s('scoring',      'Verificados (RUNT/RNDC)', 'Verificados',   'not_started', 0, true),
+        s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',   'not_started', 0, true),
         s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'not_started', 0, true),
         s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started', 0, false),
         s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started', 0, false),
