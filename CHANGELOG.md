@@ -9,6 +9,16 @@
 
 ---
 
+## [alex-agent] — 04 May 2026
+
+### Landing page Agente Alex — Vigía Conductor C2
+- **`src/pages/AlexAgent.tsx`** — Nueva landing page pública en `/alex` que simula el estado de procesamiento del Agente Alex. Incluye: avatar circular con anillo de gradiente animado, video de fondo como halo, texto dinámico con el estado actual por fase, y tres tarjetas de fase (Validación inicial, Contacto, Agendamiento) con pasos que se revelan secuencialmente y animación de carga. Logo de Vigía centrado en header y "Powered by Unio" en footer.
+- **`src/App.tsx`** — Ruta pública `/alex` agregada.
+- **`public/alex-avatar.avif`** — Avatar del Agente Alex copiado al directorio público.
+- **`public/video-alex-avatar.mp4`** — Animación de fondo del avatar copiada al directorio público.
+
+---
+
 ## [deploy] — 03 May 2026
 
 ### Deploy a GitHub Pages

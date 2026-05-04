@@ -28,6 +28,7 @@ import { AuthProvider } from './context/AuthContext';
 import { InterviewProvider } from './context/InterviewContext';
 import { PipelineProvider } from './context/PipelineContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import AlexAgent from './pages/AlexAgent';
 
 export default function App() {
   useEffect(() => {
@@ -84,6 +85,7 @@ export default function App() {
             <Route path="/candidatos" element={<ProtectedRoute><Candidatos /></ProtectedRoute>} />
 
             {/* ── Public ── */}
+            <Route path="/alex" element={<AlexAgent />} />
             <Route path="/eval/:evalId" element={<HMEvalForm />} />
             <Route path="/prueba/:evalId"       element={<PruebaBienvenida />} />
             <Route path="/prueba/:evalId/test"  element={<PruebaTest />} />
