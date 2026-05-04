@@ -73,8 +73,8 @@ export default function AnalizandoVacante() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <img
-              src="/logo-comfandi.webp"
-              alt="Comfandi"
+              src="/logo-vigia.png"
+              alt="Vigía Transportes"
               style={{ maxHeight: '52px', maxWidth: '200px', width: 'auto', height: 'auto', objectFit: 'contain' }}
             />
             <div style={{ width: '1px', height: '32px', background: 'var(--color-border-default)' }} />

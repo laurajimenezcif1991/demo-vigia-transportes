@@ -7,7 +7,10 @@
 
 ## [Sin commitear]
 
-_Sin cambios pendientes._
+### Logo Vigía Transportes
+- **`public/logo-vigia.png`** — Añadido logo oficial de Vigía Transportes S.A.S. a la carpeta de assets estáticos
+- **`Sidebar.tsx`, `HomeVacantes.tsx`, `PipelineContext.tsx`, `useVacantes.ts`** — Reemplazado logo Comfandi por logo Vigía en sidebar y lista de vacantes; actualizado alt text a `'Vigía Transportes'`
+- **`AnalizandoVacante.tsx`, `CompletarRCP.tsx`, `CrearVacante.tsx`, `RCPGenerado.tsx`, `CanalesPublicacion.tsx`, `NoNegociables.tsx`** — Logo actualizado en todas las vistas del wizard de Crear Vacante
 
 ---
 
