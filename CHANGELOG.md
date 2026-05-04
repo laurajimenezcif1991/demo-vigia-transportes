@@ -11,7 +11,7 @@ _Sin cambios pendientes._
 
 ---
 
-## [PENDING] — 03 May 2026
+## [08ac866] — 03 May 2026
 
 ### Demo Vigía — Conductor C2 Carga Refrigerada
 - **`mock.ts`** — Reemplazadas todas las vacantes mock anteriores por una única vacante `mock-vigia`: "Conductor C2 Carga Refrigerada" para Transportes Vigía S.A.S., con 15 candidatos en etapa de entrada (Verificados RUNT/RNDC). Candidatos con datos realistas del sector transporte de carga: licencias C2, manifiestos de ruta RNDC, empresas colombianas reales.
