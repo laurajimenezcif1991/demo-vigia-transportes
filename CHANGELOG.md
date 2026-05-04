@@ -7,6 +7,10 @@
 
 ## [Sin commitear]
 
+---
+
+## [1cfbf64] — 03 May 2026
+
 ### Demo mode — solo mocks Vigía
 - **`useVacantes.ts`** — Eliminada llamada a API (`getCompanyDashboard`); hook devuelve directamente `MOCK_VACANTES` con logo y nombre de Vigía Transportes hardcodeados. Evita que jobs reales de otros clientes contaminen la lista de vacantes del demo.
 
@@ -14,6 +18,9 @@
 - **`public/logo-vigia.png`** — Añadido logo oficial de Vigía Transportes S.A.S. a la carpeta de assets estáticos
 - **`Sidebar.tsx`, `HomeVacantes.tsx`, `PipelineContext.tsx`, `useVacantes.ts`** — Reemplazado logo Comfandi por logo Vigía en sidebar y lista de vacantes; actualizado alt text a `'Vigía Transportes'`
 - **`AnalizandoVacante.tsx`, `CompletarRCP.tsx`, `CrearVacante.tsx`, `RCPGenerado.tsx`, `CanalesPublicacion.tsx`, `NoNegociables.tsx`** — Logo actualizado en todas las vistas del wizard de Crear Vacante
+
+### Tabla Verificación RUNT — Design System aplicado
+- **`CandidateOnepage.tsx`** — Reemplazados todos los colores hardcodeados del table RUNT por tokens del DS: `var(--color-brand-primary)` para el header oscuro, `var(--color-primary-600)` para los encabezados de columna, `var(--color-neutral-*)` para bordes y fondos alternados, `var(--color-secondary-50)` + `var(--color-brand-accent)` para el footer de manifiestos. Tipografía unificada con `var(--font-display)`, pesos 800/700/400 según jerarquía.
 
 ---
 

@@ -1055,52 +1055,109 @@ function ScoringContent({ candidate }: { candidate: Candidate }) {
       {/* RUNT Verification table — only for Vigia candidates */}
       {runt && (
         <div style={{ marginBottom: '28px' }}>
-          {/* Dark-blue title header */}
           <div style={{
-            background: '#1b3461',
-            borderRadius: '10px 10px 0 0',
-            padding: '12px 20px',
-            color: '#ffffff',
-            fontFamily: 'var(--font-display)',
-            fontWeight: 700,
-            fontSize: '14px',
+            border: '1.5px solid var(--color-neutral-200)',
+            borderRadius: '26px',
+            overflow: 'hidden',
+            background: 'var(--container-bg)',
           }}>
-            Categorías de la licencia Nro: {runt.cc}
-          </div>
-          {/* Column headers */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            background: '#2b4a8c',
-            color: '#ffffff',
-          }}>
-            {['Categoría', 'Fecha expedición', 'Fecha vencimiento'].map((h) => (
-              <div key={h} style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', textAlign: 'center' }}>{h}</div>
-            ))}
-          </div>
-          {/* Data rows */}
-          <div style={{ border: '1px solid #d0d5dd', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+            {/* Title header */}
+            <div style={{
+              background: 'var(--color-brand-primary)',
+              padding: '12px 24px',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 800,
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: 'var(--color-text-inverse)',
+            }}>
+              Verificación RUNT — Licencia Nro: {runt.cc}
+            </div>
+
+            {/* Column headers */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr 1fr',
+              background: 'var(--color-primary-600)',
+              borderBottom: '1px solid var(--color-neutral-200)',
+            }}>
+              {['Categoría', 'Fecha expedición', 'Fecha vencimiento'].map((h) => (
+                <div key={h} style={{
+                  padding: '11px 24px',
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  lineHeight: '20px',
+                  color: 'var(--color-text-inverse)',
+                  textAlign: 'center',
+                }}>{h}</div>
+              ))}
+            </div>
+
+            {/* Data rows */}
             {runt.licenseCategories.map((row, i) => (
               <div
                 key={i}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr 1fr',
-                  background: i % 2 === 0 ? '#ffffff' : '#f5f7fa',
-                  borderTop: i === 0 ? 'none' : '1px solid #e2e8f0',
+                  borderBottom: i < runt.licenseCategories.length - 1 ? '1px solid var(--color-neutral-200)' : 'none',
+                  background: i % 2 === 0 ? 'var(--color-surface-base)' : 'var(--color-neutral-50)',
                 }}
               >
-                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: '#1e3a5f', textAlign: 'center' }}>{row.categoria}</div>
-                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#475569', textAlign: 'center' }}>{row.fechaExpedicion}</div>
-                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#475569', textAlign: 'center' }}>{row.fechaVencimiento}</div>
+                <div style={{
+                  padding: '12px 24px',
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  color: 'var(--color-neutral-800)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>{row.categoria}</div>
+                <div style={{
+                  padding: '12px 24px',
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 400,
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>{row.fechaExpedicion}</div>
+                <div style={{
+                  padding: '12px 24px',
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 400,
+                  fontSize: '14px',
+                  lineHeight: '20px',
+                  color: 'var(--color-text-muted)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>{row.fechaVencimiento}</div>
               </div>
             ))}
-          </div>
-          {/* Manifiestos count */}
-          <div style={{ marginTop: '10px', padding: '10px 16px', background: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: '#1e3a5f' }}>
-              Total de manifiestos expedidos en el rango de fechas solicitado: {runt.totalManifiestos}
-            </span>
+
+            {/* Manifiestos footer row */}
+            <div style={{
+              padding: '12px 24px',
+              background: 'var(--color-secondary-50)',
+              borderTop: '1px solid var(--color-neutral-200)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: '14px',
+              lineHeight: '20px',
+              color: 'var(--color-brand-primary)',
+            }}>
+              Total de manifiestos expedidos en el rango de fechas solicitado:{' '}
+              <span style={{ color: 'var(--color-brand-accent)', fontWeight: 800 }}>{runt.totalManifiestos}</span>
+            </div>
           </div>
         </div>
       )}
