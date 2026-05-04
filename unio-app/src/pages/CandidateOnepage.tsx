@@ -28,6 +28,7 @@ import {
   Briefcase,
   GraduationCap,
   FileText,
+  ExternalLink,
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import WizardBar from '../components/layout/WizardBar';
@@ -44,6 +45,7 @@ import {
   type InterviewFeedback,
   type PipelineStageKey,
   type RecomendacionValue,
+  type Candidate,
 } from '../data/mock';
 import { useCandidateStatus } from '../context/CandidateStatusContext';
 import { useInterview, calcScore } from '../context/InterviewContext';
@@ -481,29 +483,6 @@ export default function CandidateOnepage() {
                 </Badge>
               </div>
 
-              {/* Superpoder */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px',
-                  marginBottom: '12px',
-                  padding: '10px 14px',
-                  background: 'var(--color-secondary-50)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Zap size={14} color="var(--color-brand-accent)" />
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-brand-accent)' }}>
-                    Superpoder
-                  </span>
-                </div>
-                <span style={{ fontSize: '13px', color: 'var(--color-text-primary)', fontStyle: 'italic' }}>
-                  {candidate.superpoder}
-                </span>
-              </div>
-
               {/* Estado actual */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -530,6 +509,12 @@ export default function CandidateOnepage() {
                   <FileText size={14} />
                   Hoja de vida
                 </Button>
+                {(candidate as Candidate).runtVerification && (
+                  <Button variant="outline" size="sm" onClick={() => window.open('/manifiestos-vigia.pdf', '_blank')}>
+                    <ExternalLink size={14} />
+                    Ver manifiestos
+                  </Button>
+                )}
                 {/* Portafolio oculto — no eliminar */}
                 {false && <Button variant="ghost" size="sm">Portafolio</Button>}
               </div>
@@ -801,6 +786,11 @@ const MOCK_EDUCATION: Record<string, { degree: string; institution: string; year
     { degree: 'Administración de Empresas', institution: 'Universidad EAFIT', year: '2014' },
     { degree: 'MBA con énfasis en Mercadeo y Ventas', institution: 'Universidad del Norte', year: '2017' },
   ],
+  'Conductor C2 Carga Refrigerada': [
+    { degree: 'Licencia de Conducción Categoría C2', institution: 'Ministerio de Transporte de Colombia', year: '2022' },
+    { degree: 'Técnico en Mecánica Automotriz', institution: 'SENA', year: '2019' },
+    { degree: 'Bachiller Académico', institution: 'Colegio Nacional', year: '2015' },
+  ],
 };
 
 const MOCK_SKILLS: Record<string, string[]> = {
@@ -809,6 +799,7 @@ const MOCK_SKILLS: Record<string, string[]> = {
   'Analista de Talento Humano': ['Reclutamiento y selección', 'Entrevistas por competencias', 'ATS', 'Nómina básica', 'Indicadores de RRHH'],
   'Jefe de Finanzas':         ['Contabilidad y costos', 'Presupuestación', 'Excel avanzado', 'NIIF', 'Power BI', 'SAP'],
   'Gerente de Ventas':        ['Liderazgo comercial', 'Negociación B2B', 'CRM (Salesforce)', 'KPIs de ventas', 'Gestión de equipo'],
+  'Conductor C2 Carga Refrigerada': ['Conducción vehículos C2', 'Control unidad de frío', 'Caja Fuller', 'Inspección preoperacional', 'App Vigía Conductor', 'HSEQ y BASC', 'Gestión de manifiestos'],
 };
 
 function _mockPhone(name: string): string {
@@ -978,8 +969,16 @@ function AccordionSection({
 
 // ─── Scoring content ──────────────────────────────────────────────────────────
 
-function ScoringContent({ candidate }: { candidate: (typeof candidates)[0] }) {
+function ScoringContent({ candidate }: { candidate: Candidate }) {
   const ai = candidate.scoringAI;
+  const runt = candidate.runtVerification;
+
+  // For Vigia candidates (those with runtVerification) hide:
+  //   - first row (licencia — shown in the RUNT table instead)
+  //   - last row (expectativa salarial — shown in the salary bar above)
+  const noNegsToShow = runt
+    ? ai.noNegociables.filter((_, i) => i !== 0 && i !== ai.noNegociables.length - 1)
+    : ai.noNegociables;
 
   return (
     <div style={{ paddingTop: '20px' }}>
@@ -1021,13 +1020,13 @@ function ScoringContent({ candidate }: { candidate: (typeof candidates)[0] }) {
           </div>
 
           {/* Data rows */}
-          {ai.noNegociables.map((item, i) => (
+          {noNegsToShow.map((item, i) => (
             <div
               key={i}
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 245px',
-                borderBottom: i < ai.noNegociables.length - 1 ? '1px solid #d4d4d5' : 'none',
+                borderBottom: i < noNegsToShow.length - 1 ? '1px solid #d4d4d5' : 'none',
               }}
             >
               <div style={{ padding: '12px 24px', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#363539', display: 'flex', alignItems: 'center' }}>
@@ -1052,6 +1051,59 @@ function ScoringContent({ candidate }: { candidate: (typeof candidates)[0] }) {
           ))}
         </div>
       </div>
+
+      {/* RUNT Verification table — only for Vigia candidates */}
+      {runt && (
+        <div style={{ marginBottom: '28px' }}>
+          {/* Dark-blue title header */}
+          <div style={{
+            background: '#1b3461',
+            borderRadius: '10px 10px 0 0',
+            padding: '12px 20px',
+            color: '#ffffff',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            fontSize: '14px',
+          }}>
+            Categorías de la licencia Nro: {runt.cc}
+          </div>
+          {/* Column headers */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            background: '#2b4a8c',
+            color: '#ffffff',
+          }}>
+            {['Categoría', 'Fecha expedición', 'Fecha vencimiento'].map((h) => (
+              <div key={h} style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', textAlign: 'center' }}>{h}</div>
+            ))}
+          </div>
+          {/* Data rows */}
+          <div style={{ border: '1px solid #d0d5dd', borderTop: 'none', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+            {runt.licenseCategories.map((row, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1fr',
+                  background: i % 2 === 0 ? '#ffffff' : '#f5f7fa',
+                  borderTop: i === 0 ? 'none' : '1px solid #e2e8f0',
+                }}
+              >
+                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: '#1e3a5f', textAlign: 'center' }}>{row.categoria}</div>
+                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#475569', textAlign: 'center' }}>{row.fechaExpedicion}</div>
+                <div style={{ padding: '10px 20px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#475569', textAlign: 'center' }}>{row.fechaVencimiento}</div>
+              </div>
+            ))}
+          </div>
+          {/* Manifiestos count */}
+          <div style={{ marginTop: '10px', padding: '10px 16px', background: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: '#1e3a5f' }}>
+              Total de manifiestos expedidos en el rango de fechas solicitado: {runt.totalManifiestos}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Logros + Señales */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

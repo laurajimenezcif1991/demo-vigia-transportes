@@ -71,6 +71,11 @@ export interface Candidate {
     senales: string[];
   };
   psychTest?: PsychTestResult;
+  runtVerification?: {
+    cc: string;
+    totalManifiestos: number;
+    licenseCategories: { categoria: string; fechaExpedicion: string; fechaVencimiento: string }[];
+  };
 }
 
 export interface NoNegociable {
@@ -2044,6 +2049,24 @@ const venScoreOnly: Candidate[] = [
 // VACANTE VIGIA — CONDUCTOR C2 CARGA REFRIGERADA | Transportes Vigía S.A.S.
 // ══════════════════════════════════════════════════════════════════════════════
 
+const _vigiaRunt: { cc: string; cats: { c: string; e: string; v: string }[] }[] = [
+  { cc: '79582341',   cats: [{ c:'C2', e:'10/08/2022', v:'10/08/2025' }, { c:'A2', e:'14/02/2010', v:'14/02/2028' }, { c:'B2', e:'10/08/2022', v:'10/08/2032' }] },
+  { cc: '19478256',   cats: [{ c:'C2', e:'05/11/2023', v:'05/11/2026' }, { c:'A2', e:'18/06/2011', v:'18/06/2025' }, { c:'B2', e:'05/11/2023', v:'05/11/2033' }] },
+  { cc: '80341972',   cats: [{ c:'C2', e:'22/04/2023', v:'22/04/2026' }, { c:'B2', e:'22/04/2023', v:'22/04/2033' }] },
+  { cc: '1020774521', cats: [{ c:'C2', e:'17/01/2024', v:'17/01/2027' }, { c:'A2', e:'09/09/2014', v:'09/09/2028' }, { c:'B2', e:'17/01/2024', v:'17/01/2034' }] },
+  { cc: '79918834',   cats: [{ c:'C2', e:'03/07/2023', v:'03/07/2026' }, { c:'B1', e:'03/07/2023', v:'03/07/2033' }] },
+  { cc: '80275634',   cats: [{ c:'C2', e:'28/09/2023', v:'28/09/2026' }, { c:'B2', e:'28/09/2023', v:'28/09/2033' }] },
+  { cc: '1072671845', cats: [{ c:'C2', e:'14/05/2024', v:'14/05/2027' }, { c:'A2', e:'20/03/2018', v:'20/03/2026' }] },
+  { cc: '1015421837', cats: [{ c:'C2', e:'06/02/2024', v:'06/02/2027' }] },
+  { cc: '52847293',   cats: [{ c:'C2', e:'11/10/2023', v:'11/10/2026' }, { c:'B1', e:'11/10/2023', v:'11/10/2033' }] },
+  { cc: '79648392',   cats: [{ c:'C2', e:'25/03/2024', v:'25/03/2027' }] },
+  { cc: '1014238945', cats: [{ c:'C2', e:'08/08/2024', v:'08/08/2027' }] },
+  { cc: '1014876523', cats: [{ c:'C2', e:'01/02/2024', v:'01/02/2027' }] },
+  { cc: '63423876',   cats: [{ c:'C2', e:'17/06/2023', v:'17/06/2026' }] },
+  { cc: '80193847',   cats: [{ c:'C2', e:'30/11/2023', v:'30/11/2026' }] },
+  { cc: '72485938',   cats: [{ c:'C2', e:'15/04/2025', v:'15/04/2028' }] },
+];
+
 const _vigiaJobs = [
   { c: 'Saferbo S.A.',                r: 'Conductor C2',                d: '01/2025' },
   { c: 'TCC S.A.S.',                  r: 'Conductor Carga Refrigerada',  d: '11/2024' },
@@ -2084,6 +2107,11 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       ? '"Conocimiento de rutas nacionales y cumplimiento de tiempos de entrega"'
       : '"Disponibilidad y disposición para aprender el cargo"',
     aspiration, budget: "$3'500.000", salaryRange, currentStage: 'scoring',
+    runtVerification: {
+      cc: _vigiaRunt[idx]?.cc ?? '00000000',
+      totalManifiestos: trips,
+      licenseCategories: (_vigiaRunt[idx]?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+    },
     scoringAI: {
       score: Math.round(score * 0.95),
       status: score >= 58 ? 'continua' : 'pendiente',
