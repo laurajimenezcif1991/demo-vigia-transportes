@@ -124,11 +124,6 @@ export default function CandidateList() {
   const [fewFinalistsModal, setFewFinalistsModal] = useState(false);
   const [manyFinalistsModal, setManyFinalistsModal] = useState(false);
 
-  const statusPriority = (id: string) => {
-    const s = getStatus(id, currentStage);
-    return s === undefined || s === 'por_validar' ? 0 : 1;
-  };
-
   const filteredCandidates = useMemo(() => {
     let list = candidates
       .filter((c) => !isEliminatedBefore(c.id, currentStage));
@@ -153,12 +148,10 @@ export default function CandidateList() {
         break;
     }
 
-    return [...list].sort((a, b) => {
-      const pDiff = statusPriority(a.id) - statusPriority(b.id);
-      if (pDiff !== 0) return pDiff;
-      return sortDir === 'desc' ? b.score - a.score : a.score - b.score;
-    });
-  }, [candidates, currentStage, filter, search, sortDir, getStatus]);
+    return [...list].sort((a, b) =>
+      sortDir === 'desc' ? b.score - a.score : a.score - b.score
+    );
+  }, [candidates, currentStage, filter, search, sortDir]);
 
   const filterCounts = useMemo(() => ({
     todos: candidates.length,
