@@ -9,6 +9,13 @@
 
 ---
 
+## [whatsapp-prescreening] — 04 May 2026
+
+### Modal de preview WhatsApp en etapa de Prescreening
+- **`src/pages/CandidateList.tsx`** — Al seleccionar candidatos en la etapa de Prescreening y hacer click en "Agendar prueba manejo", ahora se abre un modal de vista previa antes de avanzarlos. El modal incluye: UI estilo WhatsApp (header verde, burbuja de mensaje saliente con fondo `#DCF8C6`), mensaje personalizado con nombre del primer candidato y título de la vacante, lista de destinatarios con avatars de iniciales, y botón "Confirmar y enviar" (verde WhatsApp) que ejecuta el avance real. El botón "Cancelar" cierra sin avanzar.
+
+---
+
 ## [alex-agent] — 04 May 2026
 
 ### Landing page Agente Alex — Vigía Conductor C2

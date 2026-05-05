@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Search, ArrowUpDown, CheckCircle2, X, Users, Trophy } from 'lucide-react';
+import { Search, ArrowUpDown, CheckCircle2, X, Users, Trophy, Send, MessageCircle } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import WizardBar from '../components/layout/WizardBar';
 import { Skeleton, SkeletonCircle } from '../components/ui/Skeleton';
@@ -123,6 +123,9 @@ export default function CandidateList() {
   // Modals for finalist selection (evaluaciones stage)
   const [fewFinalistsModal, setFewFinalistsModal] = useState(false);
   const [manyFinalistsModal, setManyFinalistsModal] = useState(false);
+
+  // WhatsApp preview modal (prescreening → prueba de manejo)
+  const [whatsappModal, setWhatsappModal] = useState(false);
 
   const filteredCandidates = useMemo(() => {
     let list = candidates
@@ -447,7 +450,13 @@ export default function CandidateList() {
           <Button
             variant="primary"
             size="lg"
-            onClick={() => handleBulkAction('pasar')}
+            onClick={() => {
+              if (isMock && currentStage === 'prescreening') {
+                setWhatsappModal(true);
+              } else {
+                handleBulkAction('pasar');
+              }
+            }}
           >
             <CheckCircle2 size={18} />
             {jobId.startsWith('mock-') && currentStage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
@@ -600,6 +609,220 @@ export default function CandidateList() {
           </div>
         </div>
       )}
+
+      {/* Modal: WhatsApp preview — prescreening → prueba de manejo */}
+      {whatsappModal && (() => {
+        const selectedIds = Array.from(selected);
+        const recipientNames = selectedIds
+          .map((id) => mockCandidatesById[id]?.name ?? '')
+          .filter(Boolean);
+        const firstName = recipientNames[0]?.split(' ')[0] ?? 'Conductor';
+        const jobTitle = vacante?.title ?? 'el cargo';
+        const AVATAR_COLORS = ['#8750F6', '#27BE69', '#295BFF', '#F6A350', '#F65078'];
+        const msgLines = [
+          `Hola, *${firstName}* 👋`,
+          '',
+          `Te escribe el equipo de selección de *Transportes Vigía*.`,
+          '',
+          `🎉 ¡Pasaste tu pre-entrevista virtual para el cargo de *${jobTitle}*!`,
+          '',
+          `El siguiente paso es tu *Prueba de Manejo*. Agenda tu cita aquí:`,
+          `📅 vigia.unio.ai/agenda`,
+          '',
+          `¡Mucho ánimo, te esperamos! 💪`,
+          `— Equipo Selección Unio`,
+        ];
+
+        return (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(15,8,36,0.60)', backdropFilter: 'blur(5px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+            onClick={() => setWhatsappModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#ffffff', borderRadius: '20px',
+                width: '500px', maxWidth: '95vw',
+                boxShadow: '0 24px 64px rgba(15,8,36,0.20)',
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              {/* Modal header */}
+              <div style={{
+                padding: '22px 24px 18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                borderBottom: '1px solid var(--color-border-default)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '40px', height: '40px', background: '#25D366',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <MessageCircle size={20} color="#ffffff" fill="#ffffff" />
+                  </div>
+                  <div>
+                    <div style={{
+                      fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '16px',
+                      color: 'var(--color-brand-primary)',
+                    }}>
+                      Vista previa — WhatsApp
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
+                      {recipientNames.length} destinatario{recipientNames.length !== 1 ? 's' : ''} · Se enviará al confirmar
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setWhatsappModal(false)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--color-text-muted)', padding: '4px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center',
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Phone mockup */}
+              <div style={{ padding: '20px 24px 16px' }}>
+                <div style={{
+                  border: '1px solid #d0c9c1',
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+                }}>
+                  {/* WA chat header */}
+                  <div style={{
+                    background: '#075E54',
+                    padding: '10px 16px',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                  }}>
+                    <div style={{
+                      width: '34px', height: '34px', background: '#25D366',
+                      borderRadius: '50%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: '12px', fontWeight: 800, color: '#fff',
+                      flexShrink: 0,
+                    }}>
+                      UV
+                    </div>
+                    <div>
+                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px', lineHeight: 1.2 }}>
+                        Unio Vigía
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '11px' }}>
+                        en línea
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chat area */}
+                  <div style={{
+                    background: '#E5DDD5',
+                    padding: '14px 12px',
+                    minHeight: '160px',
+                    display: 'flex', flexDirection: 'column', gap: '4px',
+                  }}>
+                    {/* Outgoing message bubble */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <div style={{
+                        background: '#DCF8C6',
+                        borderRadius: '12px 2px 12px 12px',
+                        padding: '10px 13px 8px',
+                        maxWidth: '88%',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.10)',
+                      }}>
+                        <div style={{
+                          fontSize: '13px', color: '#111',
+                          lineHeight: '1.55', whiteSpace: 'pre-wrap',
+                          fontFamily: '-apple-system, system-ui, sans-serif',
+                        }}>
+                          {msgLines.join('\n')}
+                        </div>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '4px',
+                          justifyContent: 'flex-end', marginTop: '5px',
+                        }}>
+                          <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.40)' }}>
+                            {new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span style={{ fontSize: '13px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipients */}
+              <div style={{ padding: '0 24px 18px' }}>
+                <div style={{
+                  fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
+                }}>
+                  Enviando a
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {recipientNames.map((name, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      background: 'var(--color-surface-subtle)',
+                      border: '1px solid var(--color-border-default)',
+                      borderRadius: '20px', padding: '4px 12px 4px 5px',
+                    }}>
+                      <div style={{
+                        width: '22px', height: '22px',
+                        background: AVATAR_COLORS[i % AVATAR_COLORS.length],
+                        borderRadius: '50%', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '8px', fontWeight: 800, color: '#fff',
+                        flexShrink: 0,
+                      }}>
+                        {name.split(' ').map((w: string) => w[0]).slice(0, 2).join('')}
+                      </div>
+                      <span style={{
+                        fontSize: '13px', fontWeight: 600,
+                        color: 'var(--color-text-primary)',
+                      }}>
+                        {name.split(' ').slice(0, 2).join(' ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{
+                padding: '0 24px 24px',
+                display: 'flex', gap: '10px',
+              }}>
+                <Button
+                  variant="secondary" size="lg" fullWidth
+                  onClick={() => setWhatsappModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary" size="lg" fullWidth
+                  onClick={() => {
+                    setWhatsappModal(false);
+                    handleBulkAction('pasar');
+                  }}
+                  style={{ background: '#25D366', borderColor: '#25D366' }}
+                >
+                  <Send size={16} />
+                  Confirmar y enviar
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
