@@ -9,6 +9,14 @@
 
 ---
 
+## [whatsapp-scheduling] — 04 May 2026
+
+### Modal interactivo de agendamiento WhatsApp con flujo conversacional
+- **`public/whatsapp-icon.png`** — Logo oficial de WhatsApp copiado a la carpeta pública para uso en el modal.
+- **`src/pages/CandidateList.tsx`** — Reemplazado el modal estático de preview por un componente `WhatsAppScheduleModal` completamente interactivo. Incluye: logo real de WhatsApp en el header, tono formal usando "usted", avatar de Vigía en el chat header, flujo conversacional de 3 pasos simulando al candidato: (1) selección de fecha entre las próximas 2 semanas en días hábiles, (2) franja horaria AM/PM, (3) sede presencial (Siberia–Cota o Paloquemao). Cada selección aparece como burbuja entrante del candidato y dispara el siguiente mensaje del recruiter. El botón "Confirmar agendamiento" (verde WhatsApp) solo se habilita al completar los 3 pasos. El chat tiene scroll automático al fondo con cada nueva interacción.
+
+---
+
 ## [whatsapp-prescreening] — 04 May 2026
 
 ### Modal de preview WhatsApp en etapa de Prescreening

@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Search, ArrowUpDown, CheckCircle2, X, Users, Trophy, Send, MessageCircle } from 'lucide-react';
+import { Search, ArrowUpDown, CheckCircle2, X, Users, Trophy, Send } from 'lucide-react';
+import { asset } from '../lib/asset';
 import Sidebar from '../components/layout/Sidebar';
 import WizardBar from '../components/layout/WizardBar';
 import { Skeleton, SkeletonCircle } from '../components/ui/Skeleton';
@@ -24,6 +25,312 @@ const filterConfig = [
   { id: 'low' as FilterTab, label: 'Bajo 50%' },
 ];
 
+
+// ─── WhatsApp Schedule Modal ─────────────────────────────────────────────────
+
+type WaChatStep = 'date' | 'time' | 'location' | 'done';
+
+const WA_WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const WA_MONTHS   = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function getAvailableDates(): string[] {
+  const dates: string[] = [];
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (dates.length < 5) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) {
+      dates.push(
+        dates.length === 0
+          ? `Mañana, ${WA_WEEKDAYS[dow]} ${d.getDate()} ${WA_MONTHS[d.getMonth()]}.`
+          : `${WA_WEEKDAYS[dow]} ${d.getDate()} ${WA_MONTHS[d.getMonth()]}.`
+      );
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
+const WA_AVATAR_COLORS = ['#8750F6', '#27BE69', '#295BFF', '#F6A350', '#F65078'];
+
+interface WhatsAppScheduleModalProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  recipientNames: string[];
+  vacanteName: string;
+}
+
+function WhatsAppScheduleModal({ open, onClose, onConfirm, recipientNames, vacanteName }: WhatsAppScheduleModalProps) {
+  const [step, setStep]             = useState<WaChatStep>('date');
+  const [selDate, setSelDate]       = useState<string | null>(null);
+  const [selTime, setSelTime]       = useState<string | null>(null);
+  const [selLocation, setSelLocation] = useState<string | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const firstName = recipientNames[0]?.split(' ')[0] ?? 'Conductor';
+  const nowTime   = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const dateOptions = getAvailableDates();
+
+  useEffect(() => {
+    if (open) {
+      setStep('date');
+      setSelDate(null);
+      setSelTime(null);
+      setSelLocation(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [step]);
+
+  if (!open) return null;
+
+  const msg1 = `Buenos días, *${firstName}*.\n\nLe escribe el equipo de Selección de *Transportes Vigía S.A.S.*\n\n¡Felicitaciones! Ha completado exitosamente la entrevista virtual para el cargo de *${vacanteName}*.\n\nEl siguiente paso es su *Prueba de Manejo presencial*. Por favor, indíquenos la fecha de su preferencia:`;
+  const msg2 = `Perfecto, fecha anotada ✅\n\n¿Prefiere asistir en la mañana o en la tarde?`;
+  const msg3 = `Muy bien. Por último, ¿a cuál de nuestras sedes le es más conveniente desplazarse?`;
+  const msg4 = selDate && selTime && selLocation
+    ? `✅ *Su cita queda confirmada:*\n\n📅 ${selDate}\n🕐 ${selTime === 'AM' ? 'Mañana (8:00 – 12:00)' : 'Tarde (13:00 – 17:00)'}\n📍 ${selLocation === 'siberia' ? 'Siberia – Cota, Bodega 8' : 'Paloquemao, Cra 25 #10-40'}\n\nRecuerde presentar su cédula y licencia de conducción vigente. ¡Le esperamos puntual!\n\n— Selección Transportes Vigía`
+    : null;
+
+  const timeOptions = [
+    { id: 'AM', label: '☀️  Mañana (8:00 – 12:00)' },
+    { id: 'PM', label: '🌤️  Tarde (13:00 – 17:00)' },
+  ];
+  const locationOptions = [
+    { id: 'siberia',    label: '📍  Siberia – Cota',  sub: 'Vía Cota-Siberia, Bodega 8' },
+    { id: 'paloquemao', label: '📍  Paloquemao',       sub: 'Cra 25 #10-40, Bogotá' },
+  ];
+
+  const chipStyle: React.CSSProperties = {
+    background: '#fff', border: '1px solid #25D366', borderRadius: '20px',
+    padding: '8px 14px', fontSize: '13px', color: '#128C7E', fontWeight: 600,
+    cursor: 'pointer', textAlign: 'left', width: '100%',
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(15,8,36,0.62)', backdropFilter: 'blur(5px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#ffffff', borderRadius: '20px',
+          width: '520px', maxWidth: '96vw', maxHeight: '92vh',
+          boxShadow: '0 24px 64px rgba(15,8,36,0.22)',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '18px 22px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: '1px solid var(--color-border-default)',
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img
+              src={asset('whatsapp-icon.png')}
+              alt="WhatsApp"
+              style={{ width: '36px', height: '36px', borderRadius: '9px', flexShrink: 0 }}
+            />
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '15px', color: 'var(--color-brand-primary)' }}>
+                Agendamiento vía WhatsApp
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
+                {recipientNames.length} destinatario{recipientNames.length !== 1 ? 's' : ''} · Simula la interacción del candidato
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Phone mockup */}
+        <div style={{ padding: '14px 16px 0', flexShrink: 0 }}>
+          <div style={{ border: '1px solid #d0c9c1', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+            {/* WA chat header */}
+            <div style={{ background: '#075E54', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img
+                src={asset('logo-vigia.png')}
+                alt="Vigía"
+                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px', lineHeight: 1.2 }}>Selección Vigía</div>
+                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '11px' }}>en línea</div>
+              </div>
+            </div>
+
+            {/* Chat messages */}
+            <div style={{ background: '#E5DDD5', padding: '12px 10px', maxHeight: '320px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              {/* Msg 1 – recruiter */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3px' }}>
+                <div style={{ background: '#DCF8C6', borderRadius: '12px 2px 12px 12px', padding: '10px 13px 7px', maxWidth: '90%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                  <div style={{ fontSize: '13px', color: '#111', lineHeight: '1.55', whiteSpace: 'pre-wrap', fontFamily: '-apple-system, system-ui, sans-serif' }}>{msg1}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                    <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span>
+                    <span style={{ fontSize: '12px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Candidate date reply */}
+              {selDate && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '3px' }}>
+                  <div style={{ background: '#fff', borderRadius: '2px 12px 12px 12px', padding: '9px 13px 7px', maxWidth: '75%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', fontFamily: '-apple-system, system-ui, sans-serif' }}>📅 {selDate}</div>
+                    <div style={{ textAlign: 'right', marginTop: '4px' }}><span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Msg 2 – recruiter time question */}
+              {selDate && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3px' }}>
+                  <div style={{ background: '#DCF8C6', borderRadius: '12px 2px 12px 12px', padding: '10px 13px 7px', maxWidth: '88%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', lineHeight: '1.55', whiteSpace: 'pre-wrap', fontFamily: '-apple-system, system-ui, sans-serif' }}>{msg2}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span>
+                      <span style={{ fontSize: '12px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Candidate time reply */}
+              {selTime && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '3px' }}>
+                  <div style={{ background: '#fff', borderRadius: '2px 12px 12px 12px', padding: '9px 13px 7px', maxWidth: '75%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', fontFamily: '-apple-system, system-ui, sans-serif' }}>{selTime === 'AM' ? '☀️ Mañana (8:00 – 12:00)' : '🌤️ Tarde (13:00 – 17:00)'}</div>
+                    <div style={{ textAlign: 'right', marginTop: '4px' }}><span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Msg 3 – recruiter location question */}
+              {selTime && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3px' }}>
+                  <div style={{ background: '#DCF8C6', borderRadius: '12px 2px 12px 12px', padding: '10px 13px 7px', maxWidth: '88%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', lineHeight: '1.55', whiteSpace: 'pre-wrap', fontFamily: '-apple-system, system-ui, sans-serif' }}>{msg3}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span>
+                      <span style={{ fontSize: '12px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Candidate location reply */}
+              {selLocation && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '3px' }}>
+                  <div style={{ background: '#fff', borderRadius: '2px 12px 12px 12px', padding: '9px 13px 7px', maxWidth: '75%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', fontFamily: '-apple-system, system-ui, sans-serif' }}>{selLocation === 'siberia' ? '📍 Siberia – Cota' : '📍 Paloquemao'}</div>
+                    <div style={{ textAlign: 'right', marginTop: '4px' }}><span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Msg 4 – recruiter confirmation */}
+              {msg4 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3px' }}>
+                  <div style={{ background: '#DCF8C6', borderRadius: '12px 2px 12px 12px', padding: '10px 13px 7px', maxWidth: '92%', boxShadow: '0 1px 2px rgba(0,0,0,0.10)' }}>
+                    <div style={{ fontSize: '13px', color: '#111', lineHeight: '1.6', whiteSpace: 'pre-wrap', fontFamily: '-apple-system, system-ui, sans-serif' }}>{msg4}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                      <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.38)' }}>{nowTime}</span>
+                      <span style={{ fontSize: '12px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Quick reply chips */}
+            {step === 'date' && (
+              <div style={{ background: '#f5f5f5', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e0e0e0' }}>
+                <div style={{ fontSize: '11px', color: '#888', fontWeight: 600, paddingLeft: '2px' }}>Selecciona una fecha disponible:</div>
+                {dateOptions.map((d) => (
+                  <button key={d} style={chipStyle} onClick={() => { setSelDate(d); setStep('time'); }}>
+                    📅 {d}
+                  </button>
+                ))}
+              </div>
+            )}
+            {step === 'time' && (
+              <div style={{ background: '#f5f5f5', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e0e0e0' }}>
+                <div style={{ fontSize: '11px', color: '#888', fontWeight: 600, paddingLeft: '2px' }}>Selecciona una franja horaria:</div>
+                {timeOptions.map((t) => (
+                  <button key={t.id} style={chipStyle} onClick={() => { setSelTime(t.id); setStep('location'); }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {step === 'location' && (
+              <div style={{ background: '#f5f5f5', padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid #e0e0e0' }}>
+                <div style={{ fontSize: '11px', color: '#888', fontWeight: 600, paddingLeft: '2px' }}>Selecciona una sede:</div>
+                {locationOptions.map((l) => (
+                  <button key={l.id} style={{ ...chipStyle, display: 'flex', flexDirection: 'column', gap: '1px' }} onClick={() => { setSelLocation(l.id); setStep('done'); }}>
+                    <span>{l.label}</span>
+                    <span style={{ fontSize: '11px', color: '#999', fontWeight: 400 }}>{l.sub}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recipients */}
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+            Enviando a
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {recipientNames.map((name, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface-subtle)', border: '1px solid var(--color-border-default)', borderRadius: '20px', padding: '4px 12px 4px 5px' }}>
+                <div style={{ width: '22px', height: '22px', background: WA_AVATAR_COLORS[i % WA_AVATAR_COLORS.length], borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                  {name.split(' ').map((w: string) => w[0]).slice(0, 2).join('')}
+                </div>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  {name.split(' ').slice(0, 2).join(' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 16px 20px', display: 'flex', gap: '10px', flexShrink: 0 }}>
+          <Button variant="secondary" size="lg" fullWidth onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary" size="lg" fullWidth
+            disabled={step !== 'done'}
+            onClick={() => { onClose(); onConfirm(); }}
+            style={step === 'done' ? { background: '#25D366', borderColor: '#25D366' } : { background: '#25D366', borderColor: '#25D366', opacity: 0.45 }}
+          >
+            <Send size={16} />
+            Confirmar agendamiento
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CandidateList() {
   const { jobId = 'v1', processId, stage = 'scoring' } = useParams<{ jobId: string; processId?: string; stage?: string }>();
@@ -610,219 +917,14 @@ export default function CandidateList() {
         </div>
       )}
 
-      {/* Modal: WhatsApp preview — prescreening → prueba de manejo */}
-      {whatsappModal && (() => {
-        const selectedIds = Array.from(selected);
-        const recipientNames = selectedIds
-          .map((id) => mockCandidatesById[id]?.name ?? '')
-          .filter(Boolean);
-        const firstName = recipientNames[0]?.split(' ')[0] ?? 'Conductor';
-        const jobTitle = vacante?.title ?? 'el cargo';
-        const AVATAR_COLORS = ['#8750F6', '#27BE69', '#295BFF', '#F6A350', '#F65078'];
-        const msgLines = [
-          `Hola, *${firstName}* 👋`,
-          '',
-          `Te escribe el equipo de selección de *Transportes Vigía*.`,
-          '',
-          `🎉 ¡Pasaste tu pre-entrevista virtual para el cargo de *${jobTitle}*!`,
-          '',
-          `El siguiente paso es tu *Prueba de Manejo*. Agenda tu cita aquí:`,
-          `📅 vigia.unio.ai/agenda`,
-          '',
-          `¡Mucho ánimo, te esperamos! 💪`,
-          `— Equipo Selección Unio`,
-        ];
-
-        return (
-          <div
-            style={{
-              position: 'fixed', inset: 0, zIndex: 9999,
-              background: 'rgba(15,8,36,0.60)', backdropFilter: 'blur(5px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            onClick={() => setWhatsappModal(false)}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: '#ffffff', borderRadius: '20px',
-                width: '500px', maxWidth: '95vw',
-                boxShadow: '0 24px 64px rgba(15,8,36,0.20)',
-                overflow: 'hidden',
-                position: 'relative',
-              }}
-            >
-              {/* Modal header */}
-              <div style={{
-                padding: '22px 24px 18px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                borderBottom: '1px solid var(--color-border-default)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '40px', height: '40px', background: '#25D366',
-                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    <MessageCircle size={20} color="#ffffff" fill="#ffffff" />
-                  </div>
-                  <div>
-                    <div style={{
-                      fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '16px',
-                      color: 'var(--color-brand-primary)',
-                    }}>
-                      Vista previa — WhatsApp
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '1px' }}>
-                      {recipientNames.length} destinatario{recipientNames.length !== 1 ? 's' : ''} · Se enviará al confirmar
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setWhatsappModal(false)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--color-text-muted)', padding: '4px', borderRadius: '8px',
-                    display: 'flex', alignItems: 'center',
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Phone mockup */}
-              <div style={{ padding: '20px 24px 16px' }}>
-                <div style={{
-                  border: '1px solid #d0c9c1',
-                  borderRadius: '14px',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-                }}>
-                  {/* WA chat header */}
-                  <div style={{
-                    background: '#075E54',
-                    padding: '10px 16px',
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                  }}>
-                    <div style={{
-                      width: '34px', height: '34px', background: '#25D366',
-                      borderRadius: '50%', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', fontSize: '12px', fontWeight: 800, color: '#fff',
-                      flexShrink: 0,
-                    }}>
-                      UV
-                    </div>
-                    <div>
-                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '14px', lineHeight: 1.2 }}>
-                        Unio Vigía
-                      </div>
-                      <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: '11px' }}>
-                        en línea
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Chat area */}
-                  <div style={{
-                    background: '#E5DDD5',
-                    padding: '14px 12px',
-                    minHeight: '160px',
-                    display: 'flex', flexDirection: 'column', gap: '4px',
-                  }}>
-                    {/* Outgoing message bubble */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <div style={{
-                        background: '#DCF8C6',
-                        borderRadius: '12px 2px 12px 12px',
-                        padding: '10px 13px 8px',
-                        maxWidth: '88%',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.10)',
-                      }}>
-                        <div style={{
-                          fontSize: '13px', color: '#111',
-                          lineHeight: '1.55', whiteSpace: 'pre-wrap',
-                          fontFamily: '-apple-system, system-ui, sans-serif',
-                        }}>
-                          {msgLines.join('\n')}
-                        </div>
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: '4px',
-                          justifyContent: 'flex-end', marginTop: '5px',
-                        }}>
-                          <span style={{ fontSize: '10px', color: 'rgba(0,0,0,0.40)' }}>
-                            {new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span style={{ fontSize: '13px', color: '#34B7F1', lineHeight: 1 }}>✓✓</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Recipients */}
-              <div style={{ padding: '0 24px 18px' }}>
-                <div style={{
-                  fontSize: '11px', fontWeight: 700, color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px',
-                }}>
-                  Enviando a
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {recipientNames.map((name, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      background: 'var(--color-surface-subtle)',
-                      border: '1px solid var(--color-border-default)',
-                      borderRadius: '20px', padding: '4px 12px 4px 5px',
-                    }}>
-                      <div style={{
-                        width: '22px', height: '22px',
-                        background: AVATAR_COLORS[i % AVATAR_COLORS.length],
-                        borderRadius: '50%', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', fontSize: '8px', fontWeight: 800, color: '#fff',
-                        flexShrink: 0,
-                      }}>
-                        {name.split(' ').map((w: string) => w[0]).slice(0, 2).join('')}
-                      </div>
-                      <span style={{
-                        fontSize: '13px', fontWeight: 600,
-                        color: 'var(--color-text-primary)',
-                      }}>
-                        {name.split(' ').slice(0, 2).join(' ')}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div style={{
-                padding: '0 24px 24px',
-                display: 'flex', gap: '10px',
-              }}>
-                <Button
-                  variant="secondary" size="lg" fullWidth
-                  onClick={() => setWhatsappModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary" size="lg" fullWidth
-                  onClick={() => {
-                    setWhatsappModal(false);
-                    handleBulkAction('pasar');
-                  }}
-                  style={{ background: '#25D366', borderColor: '#25D366' }}
-                >
-                  <Send size={16} />
-                  Confirmar y enviar
-                </Button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Modal: WhatsApp schedule — prescreening → prueba de manejo */}
+      <WhatsAppScheduleModal
+        open={whatsappModal}
+        onClose={() => setWhatsappModal(false)}
+        onConfirm={() => handleBulkAction('pasar')}
+        recipientNames={Array.from(selected).map((id) => mockCandidatesById[id]?.name ?? '').filter(Boolean)}
+        vacanteName={vacante?.title ?? 'el cargo'}
+      />
     </div>
   );
 }
