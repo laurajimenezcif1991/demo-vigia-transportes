@@ -9,6 +9,15 @@
 
 ---
 
+## [alex-landing] — 07 May 2026
+
+### Landing page pública Alex con avatar y video
+- **`alex-landing.html`** — Nueva landing page standalone (sin React) para el Agente Alex. Incluye avatar animado, video de fondo como halo y sección de estado de procesamiento.
+- **`assets/imagenes/alex-avatar.avif`** — Avatar del Agente Alex para la landing pública.
+- **`assets/imagenes/video-alex-avatar.mp4`** — Video de fondo del avatar para la landing pública.
+
+---
+
 ## [whatsapp-scheduling] — 04 May 2026
 
 ### Modal interactivo de agendamiento WhatsApp con flujo conversacional

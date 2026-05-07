@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alex — Agente Vigía Transportes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      min-height: 100vh;
+      background-color: #ffffff;
+      background-image: url('https://laurajimenezcif1991.github.io/demo-vigia-transportes/background-gradient.svg');
+      background-attachment: fixed;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center top;
+      color: #18142E;
+    }
+
+    /* ── Animations ── */
+    @keyframes alex-spin      { to { transform: rotate(360deg); } }
+    @keyframes alex-pulse-ring {
+      0%,100% { box-shadow: 0 0 0 0 rgba(135,80,246,.25); }
+      50%      { box-shadow: 0 0 0 14px rgba(135,80,246,0); }
+    }
+    @keyframes alex-fadein {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes alex-text-in {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes alex-text-out {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-5px); }
+    }
+    @keyframes alex-dot {
+      0%,80%,100% { opacity: .25; transform: scale(.7); }
+      40%          { opacity: 1;   transform: scale(1); }
+    }
+    @keyframes alex-step-pulse {
+      0%,100% { opacity: 1;   transform: scale(1); }
+      50%      { opacity: .55; transform: scale(.85); }
+    }
+
+    .alex-text-in  { animation: alex-text-in  .4s cubic-bezier(.22,1,.36,1) both; }
+    .alex-text-out { animation: alex-text-out .3s ease both; }
+    .alex-step-row { animation: alex-fadein .35s ease both; }
+    .d1 { animation: alex-dot 1.3s ease-in-out infinite 0s; }
+    .d2 { animation: alex-dot 1.3s ease-in-out infinite .22s; }
+    .d3 { animation: alex-dot 1.3s ease-in-out infinite .44s; }
+
+    /* ── Layout ── */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 20px 52px;
+    }
+
+    /* Logo */
+    .logo { height: 52px; width: auto; object-fit: contain; margin-bottom: 40px; }
+
+    /* Hero */
+    .hero { display: flex; flex-direction: column; align-items: center; gap: 24px; margin-bottom: 40px; width: 100%; }
+
+    /* Avatar wrapper */
+    .av-wrap {
+      position: relative;
+      width: min(300px, 82vw);
+      height: min(300px, 82vw);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .av-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .av-disc {
+      position: absolute;
+      width: 56%; height: 56%;
+      border-radius: 50%;
+      background: #fff;
+      z-index: 1;
+    }
+    .av-img {
+      position: absolute;
+      width: 50.7%; height: 50.7%;
+      border-radius: 50%;
+      object-fit: cover;
+      z-index: 2;
+      animation: alex-pulse-ring 2.6s ease-in-out infinite;
+    }
+
+    /* Text block */
+    .hero-text { text-align: center; }
+    .hero-h1 {
+      font-weight: 800;
+      font-size: clamp(24px, 4vw, 30px);
+      color: #18142E;
+      letter-spacing: -.4px;
+      line-height: 1.3;
+      margin-bottom: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .accent { color: #8750F6; }
+    .dots { display: inline-flex; gap: 4px; align-items: center; margin-bottom: 2px; }
+    .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #8750F6;
+      display: inline-block;
+    }
+    .hero-sub { font-size: 16px; color: #68686a; font-weight: 500; }
+
+    /* Phase grid */
+    .phase-grid {
+      width: 100%; max-width: 900px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+
+    /* Phase card */
+    .card {
+      border-radius: 16px;
+      padding: 20px;
+      transition: opacity .4s ease, box-shadow .4s ease;
+    }
+    .card-header {
+      display: flex; align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+    .card-header.has-steps { margin-bottom: 16px; }
+    .status-icon { flex-shrink: 0; margin-top: 2px; width: 20px; height: 20px; }
+    .spinner {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 3px solid #E8DDFD;
+      border-top-color: #8750F6;
+      animation: alex-spin .85s linear infinite;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .pending-circle {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid #c0c0c1;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .phase-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .phase-name { font-size: 17px; font-weight: 700; line-height: 1.3; }
+
+    /* Steps */
+    .steps { display: flex; flex-direction: column; gap: 12px; }
+    .step-row { display: flex; align-items: flex-start; gap: 10px; }
+    .step-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #8750F6;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+      animation: alex-step-pulse 1.4s ease-in-out infinite;
+    }
+    .step-dot-inner { width: 5px; height: 5px; border-radius: 50%; background: #fff; display: block; }
+    .step-done-dot { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: #8750F6; }
+    .step-text { font-size: 15px; line-height: 1.45; }
+
+    /* Completed mini steps */
+    .mini-steps { display: flex; flex-direction: column; gap: 8px; }
+    .mini-row { display: flex; align-items: flex-start; gap: 8px; }
+    .mini-check { flex-shrink: 0; margin-top: 2px; width: 14px; height: 14px; color: #27BE69; }
+    .mini-text { font-size: 14px; color: #68686a; line-height: 1.45; }
+
+    /* Footer */
+    .footer { display: flex; align-items: center; gap: 6px; margin-top: auto; }
+    .footer-label { font-size: 13px; color: #68686a; }
+    .footer-logo { height: 16px; width: auto; }
+
+    /* Mobile */
+    @media (max-width: 480px) {
+      .page  { padding: 24px 16px 40px; }
+      .logo  { height: 42px; margin-bottom: 28px; }
+      .hero  { gap: 18px; margin-bottom: 28px; }
+      .phase-grid { gap: 10px; margin-bottom: 36px; }
+      .card  { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- Logo -->
+    <img class="logo"
+      src="https://laurajimenezcif1991.github.io/demo-vigia-transportes/logo-vigia.png"
+      alt="Vigía Transportes" />
+
+    <!-- Hero -->
+    <div class="hero">
+      <!-- Avatar -->
+      <div class="av-wrap">
+        <video class="av-video" autoplay loop muted playsinline>
+          <source src="https://laurajimenezcif1991.github.io/demo-vigia-transportes/video-alex-avatar.mp4" type="video/mp4" />
+        </video>
+        <div class="av-disc"></div>
+        <img class="av-img"
+          src="https://laurajimenezcif1991.github.io/demo-vigia-transportes/alex-avatar.avif"
+          alt="Alex" />
+      </div>
+
+      <!-- Text -->
+      <div class="hero-text">
+        <h1 class="hero-h1">
+          <span>Alex está</span>
+          <span class="accent alex-text-in" id="hero-action">analizando candidatos</span>
+          <span class="dots">
+            <span class="dot d1"></span>
+            <span class="dot d2"></span>
+            <span class="dot d3"></span>
+          </span>
+        </h1>
+        <p class="hero-sub">Vacante Conductor C2 · Vigía Transportes</p>
+      </div>
+    </div>
+
+    <!-- Phase cards -->
+    <div class="phase-grid" id="phase-grid"></div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="footer-label">Powered by</span>
+      <img class="footer-logo"
+        src="https://laurajimenezcif1991.github.io/demo-vigia-transportes/logo-unio.png"
+        alt="Unio" />
+    </div>
+  </div>
+
+  <script>
+    const PHASES = [
+      {
+        id: 1, name: 'Validación inicial', heroText: 'analizando candidatos',
+        steps: [
+          'Analizando hoja de vida de candidatos',
+          'Realizando consultas en RUNT',
+          'Consultando manifiestos en el RNDC',
+        ]
+      },
+      {
+        id: 2, name: 'Contacto', heroText: 'contactando candidatos',
+        steps: [
+          'Contactando por WhatsApp',
+          'Llamando a candidatos para contarles sobre la vacante y confirmar datos',
+        ]
+      },
+      {
+        id: 3, name: 'Agendamiento', heroText: 'agendando pruebas de manejo',
+        steps: ['Agendando prueba de manejo']
+      },
+    ];
+
+    const FLAT = PHASES.flatMap((p, pi) => p.steps.map((_, si) => ({ pi, si })));
+    const STEP_MS = 2800;
+
+    let globalStep = 0;
+
+    function checkIcon(size, color) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+    }
+
+    function renderGrid() {
+      const { pi: curPi, si: curSi } = FLAT[globalStep];
+      const grid = document.getElementById('phase-grid');
+      grid.innerHTML = '';
+
+      PHASES.forEach((phase, pi) => {
+        const isCompleted = pi < curPi;
+        const isActive    = pi === curPi;
+        const isPending   = pi > curPi;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.background = isActive
+          ? 'rgba(255,255,255,0.92)'
+          : isCompleted ? 'rgba(255,255,255,0.75)'
+          : 'rgba(255,255,255,0.4)';
+        card.style.border = isActive
+          ? '1.5px solid #8750F6'
+          : isCompleted ? '1px solid rgba(39,190,105,0.35)'
+          : '1px solid #c0c0c1';
+        card.style.boxShadow = isActive
+          ? '0 6px 28px rgba(135,80,246,0.14)'
+          : isCompleted ? '0 2px 10px rgba(39,190,105,0.06)'
+          : '0 2px 8px rgba(24,20,46,0.04)';
+        card.style.opacity = isPending ? '0.52' : '1';
+
+        // Header
+        let iconHtml;
+        if (isCompleted)     iconHtml = checkIcon(20, '#27BE69');
+        else if (isActive)   iconHtml = '<div class="spinner"></div>';
+        else                 iconHtml = '<div class="pending-circle"></div>';
+
+        const labelColor = isCompleted ? '#27BE69' : isActive ? '#8750F6' : '#68686a';
+        const nameColor  = isPending ? '#68686a' : '#18142E';
+
+        card.innerHTML = `
+          <div class="card-header ${isActive || isCompleted ? 'has-steps' : ''}">
+            ${iconHtml}
+            <div>
+              <div class="phase-label" style="color:${labelColor}">Fase ${phase.id}</div>
+              <div class="phase-name" style="color:${nameColor}">${phase.name}</div>
+            </div>
+          </div>
+        `;
+
+        // Active steps
+        if (isActive) {
+          const stepsEl = document.createElement('div');
+          stepsEl.className = 'steps';
+          phase.steps.slice(0, curSi + 1).forEach((step, si) => {
+            const isDone   = si < curSi;
+            const isStepActive = si === curSi;
+            const row = document.createElement('div');
+            row.className = 'step-row alex-step-row';
+            const dotHtml = isDone
+              ? `<div class="step-done-dot">${checkIcon(16, '#8750F6')}</div>`
+              : `<div class="step-dot"><span class="step-dot-inner"></span></div>`;
+            const fw = isDone ? 500 : isStepActive ? 600 : 400;
+            const col = isDone ? '#1F1A3D' : isStepActive ? '#18142E' : '#68686a';
+            row.innerHTML = `${dotHtml}<span class="step-text" style="font-weight:${fw};color:${col}">${step}</span>`;
+            stepsEl.appendChild(row);
+          });
+          card.appendChild(stepsEl);
+        }
+
+        // Completed steps
+        if (isCompleted) {
+          const mini = document.createElement('div');
+          mini.className = 'mini-steps';
+          phase.steps.forEach(step => {
+            mini.innerHTML += `
+              <div class="mini-row">
+                <div class="mini-check">${checkIcon(14, '#27BE69')}</div>
+                <span class="mini-text">${step}</span>
+              </div>`;
+          });
+          card.appendChild(mini);
+        }
+
+        grid.appendChild(card);
+      });
+    }
+
+    function updateHeroText(newText) {
+      const el = document.getElementById('hero-action');
+      el.classList.remove('alex-text-in');
+      el.classList.add('alex-text-out');
+      setTimeout(() => {
+        el.textContent = newText;
+        el.classList.remove('alex-text-out');
+        el.classList.add('alex-text-in');
+      }, 300);
+    }
+
+    function tick() {
+      globalStep = (globalStep + 1) % FLAT.length;
+      const { pi } = FLAT[globalStep];
+      updateHeroText(PHASES[pi].heroText);
+      renderGrid();
+    }
+
+    // Init
+    renderGrid();
+    setInterval(tick, STEP_MS);
+  </script>
+</body>
+</html>
