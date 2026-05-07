@@ -8,6 +8,7 @@ import {
   MessageSquare,
   CheckSquare,
   CheckCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { usePipeline } from '../../context/PipelineContext';
 import { useMockStageState } from '../../hooks/useMockStageState';
@@ -192,10 +193,49 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       {/* Footer */}
       <div
         style={{
-          padding: '16px 20px',
+          padding: '12px 20px 16px',
           borderTop: '1px solid var(--color-border-default)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
         }}
       >
+        {isMockJob && (
+          <button
+            onClick={() => {
+              localStorage.removeItem('unio-mock-stage');
+              window.location.href = window.location.origin + window.location.pathname.split('/pipeline')[0] + '/';
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'none',
+              border: '1px solid var(--color-border-default)',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 500,
+              width: '100%',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--color-surface-subtle)';
+              e.currentTarget.style.color = 'var(--color-brand-accent)';
+              e.currentTarget.style.borderColor = 'var(--color-brand-accent)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'none';
+              e.currentTarget.style.color = 'var(--color-text-muted)';
+              e.currentTarget.style.borderColor = 'var(--color-border-default)';
+            }}
+          >
+            <RotateCcw size={12} />
+            Reiniciar demo
+          </button>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
           <span>Powered by</span>
           <img src={asset('/logo-unio.png')} alt="Unio" style={{ height: '16px', width: 'auto' }} />
