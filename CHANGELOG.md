@@ -9,6 +9,13 @@
 
 ---
 
+## [auth-persistence] — 07 May 2026
+
+### Fix: sesión persiste en GitHub Pages tras recarga de página
+- **`src/context/AuthContext.tsx`** — El usuario autenticado ahora se guarda en `localStorage` al hacer login y se restaura al cargar la app. Esto soluciona el bug donde navegar directamente a una URL profunda en GitHub Pages causaba una recarga completa que reseteaba el estado de auth en memoria, forzando al usuario a volver a `/auth` y rompiendo el flujo de la simulación WhatsApp en Pre Screening IA.
+
+---
+
 ## [alex-landing] — 07 May 2026
 
 ### Landing page pública Alex con avatar y video
