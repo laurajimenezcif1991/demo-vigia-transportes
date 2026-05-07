@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "npm run build && mkdir -p dist/alex && cp dist/index.html dist/alex/index.html && gh-pages -d dist"
+    "deploy": "npm run build && mkdir -p dist/alex dist/auth && cp dist/index.html dist/alex/index.html && cp dist/index.html dist/auth/index.html && cp ../alex-landing.html dist/alex-landing.html && mkdir -p dist/assets/imagenes && cp ../assets/imagenes/alex-avatar.avif dist/assets/imagenes/alex-avatar.avif && cp ../assets/imagenes/video-alex-avatar.mp4 dist/assets/imagenes/video-alex-avatar.mp4 && gh-pages -d dist"
   },
   "dependencies": {
     "lucide-react": "^1.7.0",
