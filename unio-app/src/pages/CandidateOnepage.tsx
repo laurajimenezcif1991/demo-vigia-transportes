@@ -47,7 +47,9 @@ import {
   type PipelineStageKey,
   type RecomendacionValue,
   type Candidate,
+  type PrescreeningProgress,
 } from '../data/mock';
+import PrescreeningProgressComponent from '../components/ui/PrescreeningProgress';
 import { useCandidateStatus } from '../context/CandidateStatusContext';
 import { useInterview, calcScore } from '../context/InterviewContext';
 import clockHistoryUrl from '../assets-icons/clock-history.svg';
@@ -604,9 +606,44 @@ export default function CandidateOnepage() {
                   <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
                     Pendiente: la pre-entrevista IA aún no ha sido procesada para este candidato.
                   </div>
-                ) : candidate.prescreeningAI ? (
-                  <PrescreeningContent prescreening={candidate.prescreeningAI} />
-                ) : null
+                ) : candidate.prescreeningAI ? (() => {
+                  // Derive prescreening progress — use explicit data if available, otherwise fallback
+                  const derivedProgress: PrescreeningProgress = candidate.prescreeningProgress ?? (() => {
+                    const rvStatus =
+                      candidate.prescreeningAI!.status === 'continua' ? 'passed'
+                      : candidate.prescreeningAI!.status === 'rechazado' ? 'failed'
+                      : 'pending';
+                    const waStatus =
+                      rvStatus !== 'passed' ? 'not_started'
+                      : candidate.prescreeningAI!.status === 'continua' ? 'completed'
+                      : 'in_progress';
+                    return {
+                      resumeValidation: { status: rvStatus as PrescreeningProgress['resumeValidation']['status'] },
+                      whatsappPrescreening: { status: waStatus as PrescreeningProgress['whatsappPrescreening']['status'] },
+                    };
+                  })();
+                  const rvPassed = derivedProgress.resumeValidation.status === 'passed';
+                  return (
+                    <>
+                      <PrescreeningProgressComponent
+                        resumeValidation={derivedProgress.resumeValidation}
+                        whatsappPrescreening={derivedProgress.whatsappPrescreening}
+                        variant="onePager"
+                      />
+                      {rvPassed ? (
+                        <PrescreeningContent prescreening={candidate.prescreeningAI!} />
+                      ) : (
+                        <div style={{ marginTop: '16px', padding: '14px 18px', background: '#f8f8fa', borderRadius: '12px', border: '1px solid #e2e2e4' }}>
+                          <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                            {derivedProgress.resumeValidation.status === 'failed'
+                              ? 'La HV no pasó la validación de criterios básicos. La pre-entrevista por WhatsApp no se inicia hasta que el candidato actualice su hoja de vida.'
+                              : 'La validación de HV está en proceso. La pre-entrevista se habilitará una vez completada.'}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })() : null
               )}
             </AccordionSection>
           </div>

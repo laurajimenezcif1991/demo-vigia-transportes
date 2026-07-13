@@ -4,7 +4,7 @@ import Avatar from './Avatar';
 import { getScoreColors } from './ScorePill';
 import Badge from './Badge';
 import { useState } from 'react';
-import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle, Calendar, AlertCircle } from 'lucide-react';
+import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle, Calendar, AlertCircle, Check } from 'lucide-react';
 
 type StatusConfig = {
   icon: React.ReactNode;
@@ -209,6 +209,29 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
               {candidate.location}
             </span>
           )}
+          {/* HV validation badge — only for prescreening stage */}
+          {candidate.currentStage === 'prescreening' && candidate.prescreeningProgress && (() => {
+            const rv = candidate.prescreeningProgress!.resumeValidation;
+            const wa = candidate.prescreeningProgress!.whatsappPrescreening;
+            const hvColor = rv.status === 'passed' ? '#15803d' : rv.status === 'failed' ? '#b91c1c' : '#92400e';
+            const hvBg = rv.status === 'passed' ? '#f0fdf4' : rv.status === 'failed' ? '#fff5f5' : '#fffbeb';
+            const hvBorder = rv.status === 'passed' ? '#bbf7d0' : rv.status === 'failed' ? '#fecaca' : '#fde68a';
+            const hvLabel = rv.status === 'passed' ? 'HV Cumple' : rv.status === 'failed' ? 'HV No cumple' : 'HV en validación';
+            const waColor = wa.status === 'completed' ? '#15803d' : '#9ca3af';
+            return (
+              <>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: hvColor, background: hvBg, border: `1px solid ${hvBorder}`, borderRadius: '20px', padding: '2px 10px', fontFamily: 'var(--font-display)' }}>
+                  {rv.status === 'passed' ? <CheckCircle2 size={10} /> : rv.status === 'failed' ? <XCircle size={10} /> : <Clock size={10} />}
+                  {hvLabel}
+                </span>
+                <span title={wa.status === 'completed' ? 'Pre-entrevista completada' : wa.status === 'in_progress' ? 'Pre-entrevista en progreso' : 'Pre-entrevista pendiente'}>
+                  {wa.status === 'completed'
+                    ? <CheckCircle2 size={13} color={waColor} />
+                    : <Check size={13} color={waColor} />}
+                </span>
+              </>
+            );
+          })()}
           {showStageChip && (
             <Badge variant={candidate.currentStage} small>
               {stageLabelMap[candidate.currentStage]}

@@ -7,6 +7,12 @@
 
 ## [Sin commitear]
 
+### Feature: Validación HV como sub-proceso de Prescreening
+- `PrescreeningProgress.tsx`: nuevo componente reutilizable (variantes `table`, `card`, `onePager`) copiado desde demo-transportes
+- `mock.ts`: tipos `ResumeValidationStatus`, `WaPrescreeningStatus`, interfaz `PrescreeningProgress`; campo `prescreeningProgress?` en `Candidate`; generación automática en `_mkVigia` según score e índice (casos: passed/failed/pending × completed/in_progress/not_started)
+- `CandidateOnepage.tsx`: importado `PrescreeningProgressComponent`; se muestra sobre `PrescreeningContent` cuando hay datos; cuando HV no pasa (`rvPassed === false`), se bloquea la pre-entrevista y se muestra mensaje contextual
+- `CandidateCard.tsx`: badge "HV Cumple / HV No cumple / HV en validación" + ícono WA (check simple o doble) al lado de la ubicación, solo para candidatos en etapa prescreening
+
 ---
 
 ## [auth-persistence] — 07 May 2026

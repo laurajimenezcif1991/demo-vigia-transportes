@@ -1,5 +1,22 @@
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type ResumeValidationStatus = 'pending' | 'passed' | 'failed' | 'not_available';
+export type WaPrescreeningStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface PrescreeningProgress {
+  resumeValidation: {
+    status: ResumeValidationStatus;
+    failReason?: string;
+    matchedCriteria?: number;
+    totalCriteria?: number;
+    validatedAt?: string;
+  };
+  whatsappPrescreening: {
+    status: WaPrescreeningStatus;
+    completedAt?: string;
+  };
+}
+
 export type VacanteStatus = 'activa' | 'en_pausa' | 'cerrada';
 export type Priority = 'alta' | 'media' | 'baja';
 export type StageStatus = 'completed' | 'in_progress' | 'not_started';
@@ -79,6 +96,7 @@ export interface Candidate {
     totalManifiestos: number;
     licenseCategories: { categoria: string; fechaExpedicion: string; fechaVencimiento: string }[];
   };
+  prescreeningProgress?: PrescreeningProgress;
 }
 
 export interface NoNegociable {
@@ -2164,6 +2182,39 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
     ],
   } : undefined;
+
+  // Prescreening progress — derived from score + idx for realistic variety
+  const _rvStatus: ResumeValidationStatus =
+    stage !== 'prescreening' ? 'pending'
+    : hi ? 'passed'
+    : md ? (idx % 4 === 0 ? 'failed' : idx % 4 === 1 ? 'pending' : 'passed')
+    : (idx % 3 === 0 ? 'pending' : 'failed');
+  const _waStatus: WaPrescreeningStatus =
+    _rvStatus !== 'passed' ? 'not_started'
+    : hi ? (idx % 5 === 0 ? 'in_progress' : 'completed')
+    : 'in_progress';
+  const prescreeningProgress: PrescreeningProgress | undefined = stage === 'prescreening' ? {
+    resumeValidation: {
+      status: _rvStatus,
+      ...((_rvStatus === 'failed') ? {
+        failReason: md
+          ? 'La HV no refleja el tiempo mínimo en el cargo más reciente registrado.'
+          : 'La HV no acredita la experiencia requerida en conducción de carga refrigerada.',
+        matchedCriteria: md ? 2 : 1,
+        totalCriteria: 6,
+        validatedAt: '2026-06-15',
+      } : _rvStatus === 'passed' ? {
+        matchedCriteria: hi ? 6 : 5,
+        totalCriteria: 6,
+        validatedAt: '2026-06-12',
+      } : {}),
+    },
+    whatsappPrescreening: {
+      status: _waStatus,
+      ...(_waStatus === 'completed' ? { completedAt: '2026-06-14' } : {}),
+    },
+  } : undefined;
+
   return {
     id, name, role: 'Conductor C2 Carga Refrigerada', sector: 'Transporte de Carga / Logística',
     years, location: `${city}, Colombia`,
@@ -2188,6 +2239,7 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       ? { pruebaManejo: idx < _vigiaTestSlots.length ? { status: 'agendada' as const, ..._vigiaTestSlots[idx] } : { status: 'pendiente' as const } }
       : {}),
     ...(pre ? { prescreeningAI: pre } : {}),
+    ...(prescreeningProgress ? { prescreeningProgress } : {}),
     scoringAI: {
       score: Math.round(score * 0.95),
       status: score >= 58 ? 'continua' : 'pendiente',
