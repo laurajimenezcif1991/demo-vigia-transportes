@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { asset } from '../lib/asset';
 import type { PipelineStageKey } from '../data/mock';
+import { assetUrl } from '../utils/assets';
 
 interface PipelineContextValue {
   activeStage: PipelineStageKey;
@@ -28,7 +28,7 @@ const PipelineContext = createContext<PipelineContextValue>({
   setJobId: () => {},
   selectionProcessId: '',
   setSelectionProcessId: () => {},
-  companyLogoUrl: asset('/logo-vigia.png'),
+  companyLogoUrl: assetUrl('/logo-demo-transportes.png'),
   setCompanyLogoUrl: () => {},
   companyName: '',
   setCompanyName: () => {},
@@ -39,11 +39,11 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
   const [progressStage, setProgressStage] = useState<PipelineStageKey>('scoring');
   const [jobId, setJobId] = useState<string>('v1');
   const [selectionProcessId, setSelectionProcessId] = useState<string>('');
-  const [companyLogoUrl, setCompanyLogoUrl] = useState<string>(asset('/logo-vigia.png'));
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string>(assetUrl('/logo-demo-transportes.png'));
   const [companyName, setCompanyName] = useState<string>('');
 
-  // Finalistas unlocks when Entrevistas or later is the progress stage
-  const finalistaLocked = !['entrevistas', 'evaluaciones'].includes(progressStage);
+  // Finalistas unlocks when Entrevistas or any later stage is the progress stage
+  const finalistaLocked = !(['entrevistas', 'evaluaciones', 'prueba_conocimiento', 'estudios', 'finalistas'] as PipelineStageKey[]).includes(progressStage);
 
   return (
     <PipelineContext.Provider value={{ activeStage, setActiveStage, progressStage, setProgressStage, finalistaLocked, jobId, setJobId, selectionProcessId, setSelectionProcessId, companyLogoUrl, setCompanyLogoUrl, companyName, setCompanyName }}>

@@ -4,7 +4,13 @@ import Avatar from './Avatar';
 import { getScoreColors } from './ScorePill';
 import Badge from './Badge';
 import { useState } from 'react';
-import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle, Calendar, AlertCircle, Check } from 'lucide-react';
+import { MapPin, Clock, HelpCircle, CheckCircle2, XCircle, CheckCheck, AlertTriangle, Circle, FileText, Send, FolderCheck, Eye, EyeOff, CalendarDays, Check } from 'lucide-react';
+
+const VEREDICTO_CONFIG = {
+  apto:          { label: 'Apto',                icon: <CheckCheck size={12} />,     color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+  apto_reservas: { label: 'Apto con reservas',   icon: <AlertTriangle size={12} />,  color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+  no_apto:       { label: 'No apto',             icon: <XCircle size={12} />,        color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+} as const;
 
 type StatusConfig = {
   icon: React.ReactNode;
@@ -33,9 +39,53 @@ const statusConfig: Record<string, StatusConfig> = {
 const stageLabelMap: Record<PipelineStageKey, string> = {
   scoring:      'Scoring',
   prescreening: 'Pre-screening',
+  prueba_manejo:'Prueba manejo',
+  evaluaciones: 'Pruebas',
   entrevistas:  'Entrevistas',
-  evaluaciones: 'Evaluaciones',
+  estudios:     'Validaciones',
+  finalistas:   'Aprobados',
 };
+
+const MANEJO_RESULT_CONFIG = {
+  apto:          { label: 'Apto',               color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+  apto_reservas: { label: 'Apto con reservas',  color: '#92400e', bg: '#fef3c7', border: '#fcd34d' },
+  no_apto:       { label: 'No apto',            color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },
+} as const;
+
+type DocsStatus = 'sin_solicitar' | 'solicitado' | 'recibido';
+
+const DOCS_CONFIG: Record<DocsStatus, { label: string; sublabel: string; color: string; icon: React.ReactNode; steps: number }> = {
+  sin_solicitar: { label: 'Sin solicitar',       sublabel: 'Documentos no solicitados',    color: '#9ca3af', icon: <FileText size={12} />,   steps: 0 },
+  solicitado:    { label: 'En progreso',          sublabel: 'Docs solicitados · Pendiente', color: '#d97706', icon: <Send size={12} />,        steps: 1 },
+  recibido:      { label: 'Docs recibidos',       sublabel: 'Documentación completa',       color: '#15803d', icon: <FolderCheck size={12} />, steps: 2 },
+};
+
+function getDocsStatus(id: string): DocsStatus {
+  const n = parseInt(id.replace(/\D/g, '') || '0', 10);
+  const states: DocsStatus[] = ['sin_solicitar', 'solicitado', 'recibido'];
+  return states[n % 3];
+}
+
+function getManejoResult(score: number): keyof typeof MANEJO_RESULT_CONFIG {
+  if (score >= 78) return 'apto';
+  if (score >= 45) return 'apto_reservas';
+  return 'no_apto';
+}
+
+function getValidacionesProgress(id: string): { medico: boolean; seguridad: boolean } {
+  const n = parseInt(id.replace(/\D/g, '') || '0', 10);
+  return {
+    medico:    n % 5 !== 0,
+    seguridad: n % 3 === 0,
+  };
+}
+
+function formatAppliedDate(date: Date): string {
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day   = String(date.getDate()).padStart(2, '0');
+  const year  = String(date.getFullYear()).slice(2);
+  return `${month} ${day} /${year}`;
+}
 
 interface CandidateCardProps {
   candidate: Candidate;
@@ -45,15 +95,22 @@ interface CandidateCardProps {
   onClick?: () => void;
   showStageChip?: boolean;
   isPending?: boolean;
-  showPruebaManejo?: boolean;
+  viewStage?: PipelineStageKey;
+  appliedDate?: Date;
+  isVisited?: boolean;
 }
 
 const GRADIENT = 'linear-gradient(115deg, #9A7CF7, #FDD83F, #F05899, #3DAC56, #00ADFE)';
 const gradientBorderBg = (innerColor: string) =>
   `linear-gradient(${innerColor}, ${innerColor}) padding-box, ${GRADIENT} border-box`;
 
-export default function CandidateCard({ candidate, statusLabel, selected, onSelect, onClick, showStageChip = true, isPending = false, showPruebaManejo = false }: CandidateCardProps) {
+export default function CandidateCard({ candidate, statusLabel, selected, onSelect, onClick, showStageChip = true, isPending = false, viewStage, appliedDate, isVisited, isContratado = false }: CandidateCardProps & { isContratado?: boolean }) {
   const { bg: scoreBg, fg: scoreFg } = getScoreColors(candidate.score);
+  // Show "--" when WA prescreening is not yet completed (prescreening stage) or AI interview not done
+  const _prescStage = viewStage ?? candidate.currentStage;
+  const _waIncomplete = _prescStage === 'prescreening'
+    && candidate.prescreeningProgress?.whatsappPrescreening.status !== 'completed';
+  const isNoRealizada = candidate.prescreeningAI?.status === 'no_realizada' || _waIncomplete;
   const [hovered, setHovered] = useState(false);
   const showGradient = hovered || !!selected;
   const innerBg = selected ? 'var(--color-secondary-50)' : '#ffffff';
@@ -123,8 +180,8 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Pending chip — shown for newly advanced candidates (suppressed when prueba manejo badge handles it) */}
-        {isPending && !showPruebaManejo && (
+        {/* Pending chip — shown for newly advanced candidates, not in finalistas */}
+        {isPending && (viewStage ?? candidate.currentStage) !== 'finalistas' && (
           <div
             style={{
               display: 'inline-flex',
@@ -145,8 +202,8 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
           </div>
         )}
 
-        {/* Status label — shown for all 3 states */}
-        {!isPending && currentStatus && (
+        {/* Status label — only shown when explicitly discarded */}
+        {!isPending && currentStatus && statusLabel === 'descartado' && (
           <div
             style={{
               display: 'inline-flex',
@@ -164,7 +221,7 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
           </div>
         )}
 
-        {/* Name + role + location + stage badge */}
+        {/* Name + location inline + stage badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
           <span
             style={{
@@ -176,60 +233,80 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
           >
             {candidate.name}
           </span>
-          {candidate.role && (
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--color-brand-accent)',
-                background: 'var(--color-secondary-50)',
-                borderRadius: '20px',
-                padding: '2px 10px',
-              }}
-            >
-              {candidate.role}
-            </span>
-          )}
           {candidate.location && (
             <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
+                gap: '3px',
+                fontSize: '12px',
                 fontWeight: 500,
                 color: 'var(--color-text-muted)',
-                background: '#ffffff',
-                border: '1px solid var(--color-border-default)',
-                borderRadius: '20px',
-                padding: '2px 10px',
               }}
             >
-              <MapPin size={10} />
+              <MapPin size={11} />
               {candidate.location}
             </span>
           )}
-          {/* HV validation badge — only for prescreening stage */}
-          {candidate.currentStage === 'prescreening' && candidate.prescreeningProgress && (() => {
-            const rv = candidate.prescreeningProgress!.resumeValidation;
-            const wa = candidate.prescreeningProgress!.whatsappPrescreening;
-            const hvColor = rv.status === 'passed' ? '#15803d' : rv.status === 'failed' ? '#b91c1c' : '#92400e';
-            const hvBg = rv.status === 'passed' ? '#f0fdf4' : rv.status === 'failed' ? '#fff5f5' : '#fffbeb';
-            const hvBorder = rv.status === 'passed' ? '#bbf7d0' : rv.status === 'failed' ? '#fecaca' : '#fde68a';
-            const hvLabel = rv.status === 'passed' ? 'HV Cumple' : rv.status === 'failed' ? 'HV No cumple' : 'HV en validación';
+          {/* Prescreening: HV validation badge + WA status icon inline with location */}
+          {(viewStage ?? candidate.currentStage) === 'prescreening' && candidate.prescreeningProgress && (() => {
+            const rv = candidate.prescreeningProgress.resumeValidation;
+            const wa = candidate.prescreeningProgress.whatsappPrescreening;
+            const rvLabel = rv.status === 'passed' ? 'HV Cumple' : rv.status === 'failed' ? 'HV No cumple' : 'HV en validación';
+            const rvColor = rv.status === 'passed' ? '#15803d' : rv.status === 'failed' ? '#b91c1c' : '#d97706';
+            const rvBg    = rv.status === 'passed' ? '#f0fdf4'  : rv.status === 'failed' ? '#fef2f2'  : '#fffbeb';
+            const rvBorder= rv.status === 'passed' ? '#86efac'  : rv.status === 'failed' ? '#fca5a5'  : '#fcd34d';
+            const rvIcon  = rv.status === 'passed' ? <CheckCircle2 size={10} /> : rv.status === 'failed' ? <XCircle size={10} /> : <Clock size={10} />;
             const waColor = wa.status === 'completed' ? '#15803d' : '#9ca3af';
+            const waIcon  = wa.status === 'completed' ? <CheckCheck size={12} color={waColor} /> : <Check size={12} color={waColor} />;
             return (
               <>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600, color: hvColor, background: hvBg, border: `1px solid ${hvBorder}`, borderRadius: '20px', padding: '2px 10px', fontFamily: 'var(--font-display)' }}>
-                  {rv.status === 'passed' ? <CheckCircle2 size={10} /> : rv.status === 'failed' ? <XCircle size={10} /> : <Clock size={10} />}
-                  {hvLabel}
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '3px',
+                  fontSize: '11px', fontWeight: 700, color: rvColor,
+                  background: rvBg, border: `1px solid ${rvBorder}`,
+                  borderRadius: '20px', padding: '2px 8px',
+                  fontFamily: 'var(--font-display)',
+                }}>
+                  {rvIcon}
+                  {rvLabel}
                 </span>
-                <span title={wa.status === 'completed' ? 'Pre-entrevista completada' : wa.status === 'in_progress' ? 'Pre-entrevista en progreso' : 'Pre-entrevista pendiente'}>
-                  {wa.status === 'completed'
-                    ? <CheckCircle2 size={13} color={waColor} />
-                    : <Check size={13} color={waColor} />}
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {waIcon}
                 </span>
               </>
+            );
+          })()}
+          {(viewStage ?? candidate.currentStage) === 'prueba_manejo' && (() => {
+            const key = getManejoResult(candidate.score);
+            const m = MANEJO_RESULT_CONFIG[key];
+            return (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '11px', fontWeight: 700,
+                color: m.color, background: m.bg,
+                border: `1px solid ${m.border}`,
+                borderRadius: '20px', padding: '2px 9px',
+                fontFamily: 'var(--font-display)',
+              }}>
+                {m.label}
+              </span>
+            );
+          })()}
+          {candidate.veredictoEntrevista && (viewStage ?? candidate.currentStage) === 'entrevistas' && (() => {
+            const v = VEREDICTO_CONFIG[candidate.veredictoEntrevista];
+            return (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '11px', fontWeight: 700,
+                color: v.color, background: v.bg,
+                border: `1px solid ${v.border}`,
+                borderRadius: '20px', padding: '2px 9px',
+                fontFamily: 'var(--font-display)',
+              }}>
+                {v.icon}
+                {v.label}
+              </span>
             );
           })()}
           {showStageChip && (
@@ -267,7 +344,7 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
         {/* Bio */}
         <p
           style={{
-            margin: 0,
+            margin: '0 0 8px',
             fontSize: '13px',
             color: 'var(--color-text-muted)',
             lineHeight: '1.5',
@@ -281,59 +358,165 @@ export default function CandidateCard({ candidate, statusLabel, selected, onSele
           {candidate.bio}
         </p>
 
-        {/* Prueba de manejo badge — only shown in evaluaciones stage */}
-        {showPruebaManejo && (
-          <div style={{ marginTop: '8px' }}>
-            {candidate.pruebaManejo?.status === 'agendada' ? (
+        {/* Meta row: fecha de aplicación + estado revisión */}
+        {(appliedDate !== undefined || isVisited !== undefined) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {appliedDate !== undefined && (
               <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                background: 'var(--color-success-bg)',
-                border: '1px solid var(--color-success)',
-                borderRadius: '20px', padding: '4px 12px',
-                fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600,
-                color: 'var(--color-positive-700, #17723F)',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '11px', color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-display)', fontWeight: 500,
               }}>
-                <Calendar size={12} strokeWidth={2.5} />
-                {candidate.pruebaManejo.fecha} · {candidate.pruebaManejo.hora} · {candidate.pruebaManejo.lugar}
+                <CalendarDays size={11} />
+                Aplicación: {formatAppliedDate(appliedDate)}
               </span>
-            ) : (
+            )}
+            {isVisited !== undefined && (
               <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                background: 'var(--color-warning-bg)',
-                border: '1px solid var(--color-warning)',
-                borderRadius: '20px', padding: '4px 12px',
-                fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600,
-                color: 'var(--color-warning-700, #A37800)',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                fontSize: '11px', fontWeight: 700,
+                fontFamily: 'var(--font-display)',
+                color:      isVisited ? '#15803d' : '#6b7280',
+                background: isVisited ? '#dcfce7'  : '#f3f4f6',
+                border:     `1px solid ${isVisited ? '#86efac' : '#e5e7eb'}`,
+                borderRadius: '20px', padding: '1px 8px',
               }}>
-                <AlertCircle size={12} strokeWidth={2.5} />
-                Pendiente por agendar
+                {isVisited ? <Eye size={10} /> : <EyeOff size={10} />}
+                {isVisited ? 'Revisado' : 'Sin revisar'}
               </span>
             )}
           </div>
         )}
       </div>
 
-      {/* Score */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
-        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total</span>
-        <div
-          style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: scoreBg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'var(--font-display)',
-            fontWeight: 800,
-            fontSize: '18px',
-            color: scoreFg,
-          }}
-        >
-          {candidate.score}
+      {/* Right-side widget: docs tracker for finalistas, validaciones for estudios, score otherwise */}
+      {(viewStage ?? candidate.currentStage) === 'finalistas' ? (() => {
+        if (isContratado) {
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0, minWidth: '110px' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '5px 12px', borderRadius: '999px',
+                background: '#dcfce7', border: '1.5px solid #86efac',
+              }}>
+                <CheckCircle2 size={13} color="#15803d" />
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, color: '#15803d' }}>
+                  Contratado
+                </span>
+              </div>
+              <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
+                Proceso completado
+              </span>
+            </div>
+          );
+        }
+        const status = getDocsStatus(candidate.id);
+        const cfg = DOCS_CONFIG[status];
+        const STEP_LABELS = ['Solicitar', 'En progreso', 'Recibido'];
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0, minWidth: '110px' }}>
+            {/* Mini stepper */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {STEP_LABELS.map((_, i) => {
+                const filled = i <= cfg.steps;
+                const isLast = i === STEP_LABELS.length - 1;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      background: filled ? cfg.color : '#e5e7eb',
+                      border: `1.5px solid ${filled ? cfg.color : '#d1d5db'}`,
+                    }} />
+                    {!isLast && (
+                      <div style={{
+                        width: '18px', height: '1.5px',
+                        background: i < cfg.steps ? cfg.color : '#e5e7eb',
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Status label */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              fontSize: '11px', fontWeight: 700,
+              color: cfg.color, fontFamily: 'var(--font-display)',
+            }}>
+              {cfg.icon}
+              {cfg.label}
+            </div>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'right', lineHeight: 1.3 }}>
+              {cfg.sublabel}
+            </span>
+          </div>
+        );
+      })() : (viewStage ?? candidate.currentStage) === 'estudios' ? (() => {
+        const { medico, seguridad } = getValidacionesProgress(candidate.id);
+        const done = [medico, seguridad].filter(Boolean).length;
+        const VALIDACION_STEPS = ['Médico', 'Seguridad'];
+        const stepsColor = done === 2 ? '#15803d' : done === 1 ? '#d97706' : '#9ca3af';
+        const statusLabel = done === 2 ? 'Validaciones completas' : done === 1 ? 'En progreso' : 'Sin iniciar';
+        const statusSublabel = done === 2 ? 'Médico y seguridad OK' : done === 1 ? 'Resultados médicos OK' : 'Validaciones no iniciadas';
+        const statusIcon = done === 2 ? <FolderCheck size={12} /> : done === 1 ? <Send size={12} /> : <FileText size={12} />;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0, minWidth: '110px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              {VALIDACION_STEPS.map((_, i) => {
+                const filled = i < done;
+                const isLast = i === VALIDACION_STEPS.length - 1;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%',
+                      background: filled ? stepsColor : '#e5e7eb',
+                      border: `1.5px solid ${filled ? stepsColor : '#d1d5db'}`,
+                    }} />
+                    {!isLast && (
+                      <div style={{
+                        width: '18px', height: '1.5px',
+                        background: done === 2 ? stepsColor : '#e5e7eb',
+                      }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '5px',
+              fontSize: '11px', fontWeight: 700,
+              color: stepsColor, fontFamily: 'var(--font-display)',
+            }}>
+              {statusIcon}
+              {statusLabel}
+            </div>
+            <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', textAlign: 'right', lineHeight: 1.3 }}>
+              {statusSublabel}
+            </span>
+          </div>
+        );
+      })() : (viewStage ?? candidate.currentStage) !== 'entrevistas' || !candidate.veredictoEntrevista ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+          <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 600 }}>Total</span>
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: isNoRealizada ? 'var(--color-surface-muted)' : scoreBg,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 800,
+              fontSize: isNoRealizada ? '22px' : '18px',
+              color: isNoRealizada ? 'var(--color-text-muted)' : scoreFg,
+            }}
+          >
+            {isNoRealizada ? '—' : candidate.score}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

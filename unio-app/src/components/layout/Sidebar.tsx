@@ -1,18 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { asset } from '../../lib/asset';
 import {
   Users,
   Filter,
-  Search,
   AlignLeft,
   MessageSquare,
   CheckSquare,
   CheckCheck,
+  ClipboardCheck,
   RotateCcw,
+  Car,
+  BrainCircuit,
+  BookOpen,
 } from 'lucide-react';
 import { usePipeline } from '../../context/PipelineContext';
 import { useMockStageState } from '../../hooks/useMockStageState';
 import { mockFinalistCards } from '../../data/mock';
+import { assetUrl } from '../../utils/assets';
 
 /** Finalistas está habilitado — la ruta /pipeline/:jobId/finalistas apunta a Shortlist. */
 
@@ -33,9 +36,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
     : true;
   const finalistasLocked = finalistaLocked || (isMockJob && !mockHasFinalists);
 
-  const PIPELINE_STAGES = isMockJob
-    ? (['scoring', 'prescreening', 'evaluaciones'] as const)
-    : (['scoring', 'prescreening', 'entrevistas', 'evaluaciones'] as const);
+  const PIPELINE_STAGES = ['scoring', 'prescreening', 'prueba_manejo', 'entrevistas', 'evaluaciones', 'prueba_conocimiento'] as const;
   const progressIdx = PIPELINE_STAGES.indexOf(progressStage as typeof PIPELINE_STAGES[number]);
 
   const getActiveId = (): string => {
@@ -46,14 +47,16 @@ export default function Sidebar({ activeItem }: SidebarProps) {
     if (path.includes('/candidate/') || path.includes('/finalist/')) {
       const params = new URLSearchParams(location.search);
       const stage = params.get('stage');
-      if (stage && ['scoring', 'prescreening', 'entrevistas', 'evaluaciones'].includes(stage)) return stage;
-
+      if (stage && ['scoring', 'prescreening', 'prueba_manejo', 'entrevistas', 'evaluaciones', 'prueba_conocimiento', 'estudios', 'finalistas'].includes(stage)) return stage;
       if (path.includes('/finalist/')) return 'finalistas';
       return 'pipeline';
     }
 
+    if (path.includes('/estudios')) return 'estudios';
     if (path === '/finalistas') return 'finalistas';
     if (path.includes('/finalistas')) return 'finalistas';
+    if (path.includes('/prueba_conocimiento')) return 'prueba_conocimiento';
+    if (path.includes('/prueba_manejo')) return 'prueba_manejo';
     if (path.includes('/evaluaciones')) return 'evaluaciones';
     if (path.includes('/entrevistas')) return 'entrevistas';
     if (path.includes('/prescreening')) return 'prescreening';
@@ -64,9 +67,13 @@ export default function Sidebar({ activeItem }: SidebarProps) {
 
   const currentActive = getActiveId();
 
+  // Derive jobId from URL as a reliable fallback when context hasn't been initialized yet
+  const urlJobId = location.pathname.match(/\/pipeline\/([^/]+)/)?.[1];
+  const effectiveJobId = (jobId && jobId !== 'v1') ? jobId : (urlJobId ?? jobId);
+
   const stageBase = selectionProcessId
-    ? `/pipeline/${jobId}/process/${selectionProcessId}`
-    : `/pipeline/${jobId}`;
+    ? `/pipeline/${effectiveJobId}/process/${selectionProcessId}`
+    : `/pipeline/${effectiveJobId}`;
 
   const topItems = [
     {
@@ -87,40 +94,54 @@ export default function Sidebar({ activeItem }: SidebarProps) {
 
   const stageItems = [
     {
-      id: 'scoring',
-      label: 'Verificación (RUNT/RNDC)',
-      Icon: Search,
-      path: `${stageBase}/scoring`,
-      locked: false,                      // siempre activo: es la primera fase
-    },
-    {
       id: 'prescreening',
-      label: 'Pre screening IA',
+      label: 'Prescreening',
       Icon: AlignLeft,
       path: `${stageBase}/prescreening`,
-      locked: isMockJob ? false : progressIdx < 1,
+      locked: false,
     },
-    ...(!isMockJob ? [{
+    {
+      id: 'prueba_manejo',
+      label: 'Prueba de manejo',
+      Icon: Car,
+      path: `${stageBase}/prueba_manejo`,
+      locked: false,
+    },
+    {
       id: 'entrevistas',
-      label: 'Entrevistas',
+      label: 'Entrevista',
       Icon: MessageSquare,
       path: `${stageBase}/entrevistas`,
-      locked: progressIdx < 2,
-    }] : []),
+      locked: false,
+    },
     {
       id: 'evaluaciones',
-      label: isMockJob ? 'Prueba de manejo' : 'Evaluaciones',
-      Icon: CheckSquare,
+      label: 'Prueba Psicométrica',
+      Icon: BrainCircuit,
       path: `${stageBase}/evaluaciones`,
-      locked: isMockJob ? false : progressIdx < 3,
+      locked: false,
     },
-    ...[{
-        id: 'finalistas',
-        label: 'Finalistas',
-        Icon: CheckCheck,
-        path: `${stageBase}/finalistas`,
-        locked: isMockJob ? false : finalistasLocked,
-      }],
+    {
+      id: 'prueba_conocimiento',
+      label: 'Prueba de conocimiento',
+      Icon: BookOpen,
+      path: `${stageBase}/prueba_conocimiento`,
+      locked: false,
+    },
+    {
+      id: 'estudios',
+      label: 'Validaciones',
+      Icon: ClipboardCheck,
+      path: `${stageBase}/estudios`,
+      locked: false,
+    },
+    {
+      id: 'finalistas',
+      label: 'Aprobados',
+      Icon: CheckCheck,
+      path: `${stageBase}/finalistas`,
+      locked: false,
+    },
   ];
 
   const allItems = [...topItems, ...stageItems];
@@ -144,9 +165,9 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       {/* Logo */}
       <div style={{ padding: '20px 20px 16px' }}>
         <img
-          src={companyLogoUrl || asset('/logo-vigia.png')}
-          alt={companyName || 'Vigía Transportes'}
-          style={{ maxHeight: '56px', maxWidth: '168px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
+          src={companyLogoUrl || assetUrl('/logo-vigia.png')}
+          alt={companyName || 'Demo Transportes'}
+          style={{ maxHeight: '110px', maxWidth: '300px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
         />
       </div>
 
@@ -162,7 +183,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
               onClick={() => !isLocked && navigate(item.path)}
               style={{
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 gap: '10px',
                 width: '100%',
                 padding: '10px 20px',
@@ -182,7 +203,7 @@ export default function Sidebar({ activeItem }: SidebarProps) {
             >
               <item.Icon
                 size={16}
-                style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0, marginTop: '1px' }}
+                style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }}
               />
               <span>{item.label}</span>
             </button>
@@ -200,45 +221,52 @@ export default function Sidebar({ activeItem }: SidebarProps) {
           gap: '10px',
         }}
       >
-        {isMockJob && (
-          <button
-            onClick={() => {
-              localStorage.removeItem('unio-mock-stage');
-              window.location.href = window.location.origin + window.location.pathname.split('/pipeline')[0] + '/';
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'none',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: '8px',
-              padding: '6px 10px',
-              cursor: 'pointer',
-              fontSize: '11px',
-              color: 'var(--color-text-muted)',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 500,
-              width: '100%',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--color-surface-subtle)';
-              e.currentTarget.style.color = 'var(--color-brand-accent)';
-              e.currentTarget.style.borderColor = 'var(--color-brand-accent)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'none';
-              e.currentTarget.style.color = 'var(--color-text-muted)';
-              e.currentTarget.style.borderColor = 'var(--color-border-default)';
-            }}
-          >
-            <RotateCcw size={12} />
-            Reiniciar demo
-          </button>
-        )}
+        {/* Reset demo button */}
+        <button
+          title="Reiniciar demo (limpia el progreso guardado)"
+          onClick={() => {
+            const toRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && (k.startsWith('unio') || k.startsWith('hm_eval_') || k.startsWith('prueba_'))) {
+                toRemove.push(k);
+              }
+            }
+            toRemove.forEach((k) => localStorage.removeItem(k));
+            window.location.href = import.meta.env.BASE_URL;
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            width: '100%',
+            padding: '6px 8px',
+            background: 'transparent',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            fontSize: '11px',
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 500,
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-surface-subtle)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-default)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-text-muted)';
+          }}
+        >
+          <RotateCcw size={12} />
+          <span>Reiniciar demo</span>
+        </button>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--color-text-muted)' }}>
           <span>Powered by</span>
-          <img src={asset('/logo-unio.png')} alt="Unio" style={{ height: '16px', width: 'auto' }} />
+          <img src={assetUrl('/logo-unio.png')} alt="Unio" style={{ height: '16px', width: 'auto' }} />
         </div>
       </div>
     </aside>

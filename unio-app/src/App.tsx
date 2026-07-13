@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import HomeVacantes from './pages/HomeVacantes';
 import Pipeline from './pages/Pipeline';
 import CandidateList from './pages/CandidateList';
@@ -14,9 +13,11 @@ import FinalistView from './pages/FinalistView';
 import Shortlist from './pages/Shortlist';
 import HMEvalForm from './pages/HMEvalForm';
 import Candidatos from './pages/Candidatos';
+import AnalyticsPage from './pages/AnalyticsPage';
 import PruebaBienvenida from './pages/PruebaBienvenida';
 import PruebaTest from './pages/PruebaTest';
 import PruebaExito from './pages/PruebaExito';
+import WaApplyFlow from './pages/WaApplyFlow';
 import AuthPage from './pages/auth/AuthPage';
 import VerifyEmail from './pages/auth/VerifyEmail';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -27,20 +28,17 @@ import { CandidateStatusProvider } from './context/CandidateStatusContext';
 import { AuthProvider } from './context/AuthContext';
 import { InterviewProvider } from './context/InterviewContext';
 import { PipelineProvider } from './context/PipelineContext';
+import { WaPrescreeningProvider } from './context/WaPrescreeningContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import AlexAgent from './pages/AlexAgent';
 
 export default function App() {
-  useEffect(() => {
-    document.body.style.backgroundImage = `url(${import.meta.env.BASE_URL}background-gradient.svg)`;
-  }, []);
-
   return (
     <AuthProvider>
       <CandidateStatusProvider>
         <InterviewProvider>
+          <WaPrescreeningProvider>
           <PipelineProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <BrowserRouter basename="/demo-vigia-transportes">
           <Routes>
             {/* ── Auth (public) ── */}
             <Route path="/auth" element={<AuthPage />} />
@@ -64,18 +62,24 @@ export default function App() {
             {/* Rutas con processId (estructura definida por backend) */}
             <Route path="/pipeline/:jobId/process/:processId/scoring" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/process/:processId/prescreening" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/process/:processId/prueba_manejo" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/process/:processId/entrevistas" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/process/:processId/evaluaciones" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/process/:processId/prueba_conocimiento" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/process/:processId/estudios" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/process/:processId/candidate/:candidateId" element={<ProtectedRoute><CandidateOnepage /></ProtectedRoute>} />
-            <Route path="/pipeline/:jobId/process/:processId/finalistas" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/process/:processId/finalistas" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
 
             {/* Rutas legacy sin processId (fallback para back-nav y rutas existentes) */}
             <Route path="/pipeline/:jobId/scoring" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/prescreening" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/prueba_manejo" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/entrevistas" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
             <Route path="/pipeline/:jobId/evaluaciones" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
-            <Route path="/pipeline/:jobId/finalistas" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
-            <Route path="/finalistas" element={<ProtectedRoute><Shortlist /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/prueba_conocimiento" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/estudios" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/pipeline/:jobId/finalistas" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
+            <Route path="/finalistas" element={<ProtectedRoute><CandidateList /></ProtectedRoute>} />
 
             {/* Deep-link routes for candidate & finalist detail (keep for back-nav) */}
             <Route path="/pipeline/:jobId/candidate/:candidateId" element={<ProtectedRoute><CandidateOnepage /></ProtectedRoute>} />
@@ -84,8 +88,11 @@ export default function App() {
             {/* /candidatos — backlog: pipeline unificado con ValidationPipelineFilter (solo URL directa) */}
             <Route path="/candidatos" element={<ProtectedRoute><Candidatos /></ProtectedRoute>} />
 
+            {/* Analytics & Reportes */}
+            <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+
             {/* ── Public ── */}
-            <Route path="/alex" element={<AlexAgent />} />
+            <Route path="/apply/:vacancyId" element={<WaApplyFlow />} />
             <Route path="/eval/:evalId" element={<HMEvalForm />} />
             <Route path="/prueba/:evalId"       element={<PruebaBienvenida />} />
             <Route path="/prueba/:evalId/test"  element={<PruebaTest />} />
@@ -96,6 +103,7 @@ export default function App() {
           </Routes>
         </BrowserRouter>
           </PipelineProvider>
+          </WaPrescreeningProvider>
         </InterviewProvider>
       </CandidateStatusProvider>
     </AuthProvider>

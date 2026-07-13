@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { asset } from '../../lib/asset';
+import { assetUrl } from '../../utils/assets';
 
 interface AuthLayoutProps {
   title: string;
@@ -36,7 +36,7 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
         {/* Logo */}
         <div style={{ marginBottom: '24px' }}>
           <img
-            src={asset('/unio-SM.png')}
+            src={assetUrl('/unio-SM.png')}
             alt="Unio"
             style={{ height: '64px', width: 'auto', display: 'block' }}
           />
@@ -114,7 +114,7 @@ export default function AuthLayout({ title, subtitle, children }: AuthLayoutProp
             cursor: 'pointer',
           }}
         >
-          <img src="/icons/linkedin.svg" alt="LinkedIn" width="16" height="16" />
+          <img src={assetUrl('/icons/linkedin.svg')} alt="LinkedIn" width="16" height="16" />
           Síguenos en Linkedin
         </button>
         <p

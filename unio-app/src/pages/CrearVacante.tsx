@@ -1,3 +1,4 @@
+import { assetUrl } from '../utils/assets';
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Upload, X, FileText, ChevronDown } from 'lucide-react';
@@ -147,14 +148,14 @@ export default function CrearVacante() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <img
-            src="/logo-vigia.png"
-            alt="Vigía Transportes"
-            style={{ maxHeight: '52px', maxWidth: '200px', width: 'auto', height: 'auto', objectFit: 'contain' }}
+            src={assetUrl('/logo-demo-transportes.png')}
+            alt="Demo Transportes"
+            style={{ maxHeight: '100px', maxWidth: '300px', width: 'auto', height: 'auto', objectFit: 'contain' }}
           />
           <div style={{ width: '1px', height: '32px', background: 'var(--color-border-default)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
             <span>Powered by</span>
-            <img src="/logo-unio.png" alt="Unio" style={{ height: '14px', width: 'auto' }} />
+            <img src={assetUrl('/logo-unio.png')} alt="Unio" style={{ height: '14px', width: 'auto' }} />
           </div>
         </div>
 

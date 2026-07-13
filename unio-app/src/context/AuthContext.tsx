@@ -46,39 +46,49 @@ const MOCK_OTP = '925782';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const AUTH_STORAGE_KEY = 'unio-auth-user';
-
-function loadUserFromStorage(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(loadUserFromStorage);
-  const [token, setToken] = useState<string | null>(() => loadUserFromStorage()?.token ?? null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [pendingEmail, setPendingEmail] = useState('');
 
   const login = async (
     email: string,
-    _password: string
+    password: string
   ): Promise<'success' | 'invalid_credentials' | 'network_error'> => {
-    // Demo mode: accept any non-empty email and password
-    if (!email) return 'invalid_credentials';
-    const authUser: AuthUser = {
-      id: 'demo-vigia',
-      email,
-      name: 'Equipo Vigía',
-      companyId: 'vigia',
-      token: 'demo-token',
-    };
-    setUser(authUser);
-    setToken('demo-token');
-    try { localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser)); } catch { /* ignore */ }
-    return 'success';
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (res.status === 401 || res.status === 403 || res.status === 400) {
+        return 'invalid_credentials';
+      }
+
+      if (!res.ok) {
+        return 'network_error';
+      }
+
+      const data = await res.json() as {
+        token: string;
+        user: { id: string; name: string; company_id: string };
+      };
+
+      const authUser: AuthUser = {
+        id: data.user.id,
+        email,
+        name: data.user.name,
+        companyId: data.user.company_id,
+        token: data.token,
+      };
+
+      setUser(authUser);
+      setToken(data.token);
+      return 'success';
+    } catch {
+      return 'network_error';
+    }
   };
 
   const register = (
@@ -117,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
     setPendingEmail('');
-    try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch { /* ignore */ }
   };
 
   return (

@@ -1,31 +1,32 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  UserCheck,
-  Pencil,
-  Lock,
   MapPin,
   Calendar,
   Users,
   ChevronRight,
   ArrowLeft,
+  Lock,
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import { Skeleton, SkeletonCircle } from '../components/ui/Skeleton';
+import { Skeleton } from '../components/ui/Skeleton';
 import { getPipelineStages, getMockPipelineStages, mockFinalistCards, MOCK_DESCRIPTIONS, type PipelineStage } from '../data/mock';
 import { useMockStageState } from '../hooks/useMockStageState';
 import { usePipeline } from '../context/PipelineContext';
 import { useVacantes } from '../hooks/useVacantes';
 import type { Phase } from '../types/dashboard';
 
+// Funnel bar colors — ordered by chromatic hue (orange → amber → cyan → green → blue → violet → purple)
 const stageColors: Record<string, { bg: string; fg: string }> = {
-  scoring: { bg: 'var(--color-stage-1-bg)', fg: 'var(--color-stage-1-fg)' },
-  prescreening: { bg: 'var(--color-stage-2-bg)', fg: 'var(--color-stage-2-fg)' },
-  entrevistas: { bg: 'var(--color-stage-3-bg)', fg: 'var(--color-stage-3-fg)' },
-  evaluaciones: { bg: 'var(--color-stage-4-bg)', fg: 'var(--color-stage-4-fg)' },
-  finalistas: { bg: '#FFE5F2', fg: '#990032' },
+  scoring:             { bg: '#fff3e0', fg: '#ff9306' },
+  prescreening:        { bg: '#fff3e0', fg: '#ff9306' },
+  prueba_manejo:       { bg: '#fff8eb', fg: '#fec76f' },
+  entrevistas:         { bg: '#e6f4fb', fg: '#29a3ce' },
+  evaluaciones:        { bg: '#edf7f2', fg: '#69bb8e' },
+  prueba_conocimiento: { bg: '#eff6ff', fg: '#3b82f6' },
+  estudios:            { bg: '#f1ecfe', fg: '#8851fa' },
+  finalistas:          { bg: '#f5eeff', fg: '#b052fc' },
 };
 
 const stageBadgeVariants: Record<string, 'scoring' | 'prescreening' | 'entrevistas' | 'evaluaciones' | 'finalistas'> = {
@@ -39,11 +40,14 @@ const stageBadgeVariants: Record<string, 'scoring' | 'prescreening' | 'entrevist
 const AI_STAGES = new Set(['scoring', 'prescreening']);
 
 const STAGE_META: Record<string, { label: string; stageBadge: string }> = {
-  scoring:      { label: 'Verificación (RUNT/RNDC)', stageBadge: 'Verificación' },
-  prescreening: { label: 'Pre-entrevista IA',        stageBadge: 'Pre screening' },
-  entrevistas:  { label: 'Entrevistas',              stageBadge: 'Entrevistas' },
-  evaluaciones: { label: 'Prueba de manejo',          stageBadge: 'Prueba manejo' },
-  finalistas:   { label: 'Finalistas',               stageBadge: 'Finalistas' },
+  scoring:             { label: 'Scoring',               stageBadge: 'Scoring' },
+  prescreening:        { label: 'Prescreening',          stageBadge: 'Prescreening' },
+  prueba_manejo:       { label: 'Prueba de manejo',      stageBadge: 'Prueba manejo' },
+  entrevistas:         { label: 'Entrevista',            stageBadge: 'Entrevista' },
+  evaluaciones:        { label: 'Prueba Psicométrica',   stageBadge: 'Psicométrica' },
+  prueba_conocimiento: { label: 'Prueba de conocimiento', stageBadge: 'Conocimiento' },
+  finalistas:          { label: 'Aprobados',             stageBadge: 'Aprobados' },
+  estudios:            { label: 'Validaciones',          stageBadge: 'Validaciones' },
 };
 
 function mapPhaseStatus(label?: string): 'completed' | 'in_progress' | 'not_started' {
@@ -54,17 +58,37 @@ function mapPhaseStatus(label?: string): 'completed' | 'in_progress' | 'not_star
   return 'not_started';
 }
 
-const STAGE_ORDER = ['scoring', 'prescreening', 'entrevistas', 'evaluaciones', 'finalistas'];
+const STAGE_ORDER = ['scoring', 'prescreening', 'prueba_manejo', 'entrevistas', 'evaluaciones', 'prueba_conocimiento', 'estudios', 'finalistas'];
 
 // Normalize API phase type keys to internal stage IDs
 function normalizePhaseType(raw: string): string {
   const s = raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_-]/g, '');
   if (s.includes('prescreening') || s.includes('preseleccion') || s.includes('preentrevista')) return 'prescreening';
   if (s.includes('scoring') || s.includes('puntuacion') || s.includes('analisis')) return 'scoring';
+  if (s.includes('pruebamanejo') || s.includes('manejo')) return 'prueba_manejo';
+  if (s.includes('evaluacion') || s.includes('psicotecnica') || s.includes('psicologica')) return 'evaluaciones';
   if (s.includes('entrevista')) return 'entrevistas';
-  if (s.includes('evaluacion')) return 'evaluaciones';
   if (s.includes('finalista')) return 'finalistas';
   return s;
+}
+
+// Merges the scoring card into prescreening (summing candidateCounts) and removes
+// scoring as a visible card. STAGE_ORDER keeps 'scoring' for internal logic only.
+function mergeScoring(stages: PipelineStage[]): PipelineStage[] {
+  const scoringCount = stages.find((s) => s.id === 'scoring')?.candidateCount ?? 0;
+  return stages
+    .map((s) => {
+      if (s.id === 'prescreening') {
+        return {
+          ...s,
+          label: STAGE_META.prescreening.label,
+          stageBadge: STAGE_META.prescreening.stageBadge,
+          candidateCount: s.candidateCount + scoringCount,
+        };
+      }
+      return s;
+    })
+    .filter((s) => s.id !== 'scoring');
 }
 
 function mapPhasesToStages(phases: Phase[], jobId: string, processId: string): PipelineStage[] {
@@ -73,20 +97,26 @@ function mapPhasesToStages(phases: Phase[], jobId: string, processId: string): P
     phases.map((p) => [normalizePhaseType(p.process_phase_type), p])
   );
 
-  // Always render all 5 stages; use API data where available, otherwise not_started
-  return STAGE_ORDER.map((id) => {
-    const phase = phaseMap.get(id);
-    const meta = STAGE_META[id];
-    return {
-      id,
-      label: meta.label,
-      stageBadge: meta.stageBadge,
-      status: mapPhaseStatus(phase?.phase_status_label),
-      candidateCount: phase?.phase_candidates_count ?? 0,
-      isAI: AI_STAGES.has(id),
-      route: `/pipeline/${jobId}/process/${processId}/${id}`,
-    };
-  });
+  const scoringCount = phaseMap.get('scoring')?.phase_candidates_count ?? 0;
+
+  // Render all stages except scoring (merged into prescreening), estudios and finalistas (appended separately)
+  return STAGE_ORDER
+    .filter((id) => id !== 'scoring' && id !== 'estudios' && id !== 'finalistas')
+    .map((id) => {
+      const phase = phaseMap.get(id);
+      const meta = STAGE_META[id];
+      const candidateCount =
+        (phase?.phase_candidates_count ?? 0) + (id === 'prescreening' ? scoringCount : 0);
+      return {
+        id,
+        label: meta.label,
+        stageBadge: meta.stageBadge,
+        status: mapPhaseStatus(phase?.phase_status_label),
+        candidateCount,
+        isAI: AI_STAGES.has(id),
+        route: `/pipeline/${jobId}/process/${processId}/${id}`,
+      };
+    });
 }
 
 function formatDate(iso: string): string {
@@ -98,119 +128,113 @@ function formatDate(iso: string): string {
   }
 }
 
-function StageCard({ stage }: { stage: PipelineStage }) {
+function FunnelRow({
+  stage,
+  maxCount,
+  convPct,
+  idx,
+}: {
+  stage: PipelineStage;
+  maxCount: number;
+  convPct: number | null;
+  idx: number;
+}) {
   const navigate = useNavigate();
+  const isNotStarted = stage.status === 'not_started' && !stage.forceEnabled;
+  const barPct = maxCount > 0 ? Math.max((stage.candidateCount / maxCount) * 100, 0.5) : 0.5;
   const colors = stageColors[stage.id] || stageColors.scoring;
-  const isCompleted = stage.status === 'completed';
-  const isInProgress = stage.status === 'in_progress';
-  const isNotStarted = stage.status === 'not_started';
-
-  const statusDotColor = isCompleted
-    ? 'var(--color-positive-500)'
-    : isInProgress
-    ? 'var(--color-warning-500)'
-    : 'var(--color-neutral-400)';
-
-  const statusText = isCompleted ? 'Completado' : isInProgress ? 'En proceso' : 'Sin iniciar';
-
-  const Icon = isNotStarted ? Lock : isCompleted ? UserCheck : Pencil;
 
   return (
     <div
+      onClick={() => !isNotStarted && navigate(stage.route)}
       style={{
-        background: '#ffffff',
-        border: '1px solid var(--color-border-default)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '24px',
-        opacity: isNotStarted ? 0.55 : 1,
         display: 'flex',
-        flexDirection: 'column',
+        alignItems: 'center',
         gap: '12px',
-        minHeight: '220px',
+        padding: '5px 12px',
+        borderRadius: 'var(--radius-md)',
+        cursor: isNotStarted ? 'default' : 'pointer',
+        opacity: isNotStarted ? 0.45 : 1,
+        transition: 'background 0.15s ease',
+        animation: `fadeSlideRight 0.35s ease ${idx * 60}ms both`,
+      }}
+      onMouseEnter={(e) => {
+        if (!isNotStarted) (e.currentTarget as HTMLDivElement).style.background = 'var(--color-surface-subtle)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
       }}
     >
-      {/* Top row: icon + AI badge */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: 'var(--radius-md)',
-            background: isNotStarted ? 'var(--color-surface-muted)' : colors.bg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isNotStarted ? 'var(--color-text-muted)' : colors.fg,
-          }}
-        >
-          <Icon size={20} />
-        </div>
-        {stage.isAI && !isNotStarted && (
-          <Badge variant="ai" small>
-            ✦ IA
-          </Badge>
-        )}
-      </div>
 
-      {/* Status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <div
-          style={{
-            width: '7px',
-            height: '7px',
-            borderRadius: '50%',
-            background: statusDotColor,
-            flexShrink: 0,
-          }}
-        />
-        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
-          {statusText}
-        </span>
-      </div>
-
-      {/* Stage badge — always visible */}
-      <div style={{ display: 'flex' }}>
-        <Badge variant={stageBadgeVariants[stage.id] ?? 'default'}>
-          {stage.stageBadge}
-        </Badge>
-      </div>
-
-      {/* Candidate count — always visible */}
+      {/* Stage label */}
       <div
         style={{
+          width: '148px',
+          flexShrink: 0,
+          fontSize: '12px',
+          fontWeight: 700,
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          color: 'var(--color-text-primary)',
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          fontSize: '13px',
-          color: 'var(--color-text-muted)',
         }}
       >
-        <Users size={14} />
-        {stage.candidateCount} candidatos
+        {stage.label}
+        {isNotStarted && <Lock size={11} color="var(--color-text-muted)" />}
       </div>
 
-      {/* Action button */}
-      <div style={{ marginTop: 'auto' }}>
-        <Button
-          variant="secondary"
-          size="md"
-          fullWidth
-          disabled={isNotStarted}
-          onClick={() => !isNotStarted && navigate(stage.route)}
-        >
-          {isNotStarted ? (
-            <>
-              <Lock size={14} />
-              Bloqueado
-            </>
-          ) : (
-            <>
-              Ver resultados
-              <ChevronRight size={14} />
-            </>
-          )}
-        </Button>
+      {/* Bar track */}
+      <div
+        style={{
+          flex: 1,
+          height: '20px',
+          background: 'var(--color-neutral-100)',
+          borderRadius: '9999px',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${barPct}%`,
+            background: isNotStarted ? 'var(--color-neutral-200)' : colors.fg,
+            borderRadius: '9999px',
+            transition: 'width 0.45s ease',
+          }}
+        />
       </div>
+
+      {/* Count + conversion */}
+      <div style={{ flexShrink: 0, textAlign: 'right', minWidth: '160px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+          <Users size={14} color="var(--color-text-muted)" />
+          <span
+            style={{
+              fontSize: '17px',
+              fontWeight: 800,
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-display)',
+              lineHeight: 1,
+            }}
+          >
+            {stage.candidateCount.toLocaleString('es-CO')}
+          </span>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+          {convPct !== null
+            ? idx === 0
+              ? '100% · inicio del funnel'
+              : `${convPct}% conversión`
+            : '—'}
+        </div>
+      </div>
+
+      {/* Arrow */}
+      {!isNotStarted && (
+        <ChevronRight size={16} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+      )}
     </div>
   );
 }
@@ -218,7 +242,7 @@ function StageCard({ stage }: { stage: PipelineStage }) {
 export default function Pipeline() {
   const navigate = useNavigate();
   const { jobId = '', processId } = useParams<{ jobId: string; processId?: string }>();
-  const { setJobId, setSelectionProcessId, setProgressStage } = usePipeline();
+  const { setJobId, setSelectionProcessId, setProgressStage, finalistaLocked } = usePipeline();
   const { getMockProgressStage, getPendingCandidates } = useMockStageState();
   const { vacantes, rawJobs, loading } = useVacantes();
 
@@ -241,24 +265,96 @@ export default function Pipeline() {
 
   // Build stages — memoized so reference is stable and doesn't cause effect loops
   const stages = useMemo((): PipelineStage[] => {
+    const stageBase = processId
+      ? `/pipeline/${jobId}/process/${processId}`
+      : `/pipeline/${jobId}`;
+
+    const estudiosCard: PipelineStage = {
+      id: 'estudios',
+      label: STAGE_META.estudios.label,
+      stageBadge: STAGE_META.estudios.stageBadge,
+      status: 'not_started',
+      candidateCount: 0,
+      isAI: false,
+      route: `${stageBase}/estudios`,
+      forceEnabled: true,
+    };
+
     if (jobId.startsWith('mock-')) {
-      const base = getMockPipelineStages(jobId);
-      // Lock Finalistas card if no finalists exist yet
+      const base = mergeScoring(
+        getMockPipelineStages(jobId).map((s) => ({ ...s, route: `${stageBase}/${s.id}` })),
+      );
+      // estudios and finalistas are extracted from base (so their counts come from getMockPipelineStages)
+      const withoutEstudiosAndFinalistas = base.filter((s) => s.id !== 'estudios' && s.id !== 'finalistas');
+      const estudiosBase = base.find((s) => s.id === 'estudios');
+      const finalistasBase = base.find((s) => s.id === 'finalistas');
+
+      const estudiosCardFinal: PipelineStage = {
+        id: 'estudios',
+        label: STAGE_META.estudios.label,
+        stageBadge: STAGE_META.estudios.stageBadge,
+        status: estudiosBase?.status ?? 'not_started',
+        candidateCount: estudiosBase?.candidateCount ?? 0,
+        isAI: false,
+        route: `${stageBase}/estudios`,
+        forceEnabled: true,
+      };
+
       const hasFinalists =
         getPendingCandidates(jobId, 'finalistas').length > 0 ||
-        (mockFinalistCards[jobId]?.length ?? 0) > 0;
-      return base.map((s) =>
-        s.id === 'finalistas' && !hasFinalists
-          ? { ...s, status: 'not_started' as const }
-          : s,
-      );
+        (mockFinalistCards[jobId]?.length ?? 0) > 0 ||
+        (finalistasBase?.candidateCount ?? 0) > 0;
+      const finalistasCard: PipelineStage = {
+        ...(finalistasBase ?? {
+          id: 'finalistas',
+          label: STAGE_META.finalistas.label,
+          stageBadge: STAGE_META.finalistas.stageBadge,
+          status: 'not_started' as const,
+          candidateCount: 0,
+          isAI: false,
+          route: `${stageBase}/finalistas`,
+        }),
+        status: hasFinalists ? (finalistasBase?.status ?? 'in_progress') : 'not_started',
+        forceEnabled: true,
+      };
+      return [...withoutEstudiosAndFinalistas, estudiosCardFinal, finalistasCard];
     }
-    if (selectionProcess?.phases) return mapPhasesToStages(selectionProcess.phases, jobId, processId ?? '');
-    return getPipelineStages(jobId).map((s) => ({
-      ...s,
-      route: processId ? `/pipeline/${jobId}/process/${processId}/${s.id}` : s.route,
-    }));
-  }, [jobId, processId, selectionProcess]);
+    if (selectionProcess?.phases) {
+      const mapped = mapPhasesToStages(selectionProcess.phases, jobId, processId ?? '');
+      const withoutFinalistas = mapped.filter((s) => s.id !== 'finalistas');
+      const finalistasPhase = mapped.find((s) => s.id === 'finalistas');
+      const finalistasCard: PipelineStage = finalistasPhase ?? {
+        id: 'finalistas',
+        label: STAGE_META.finalistas.label,
+        stageBadge: STAGE_META.finalistas.stageBadge,
+        status: 'not_started',
+        candidateCount: 0,
+        isAI: false,
+        route: `${stageBase}/finalistas`,
+        forceEnabled: true,
+      };
+      return [...withoutFinalistas, estudiosCard, finalistasCard];
+    }
+    const base = mergeScoring(
+      getPipelineStages(jobId).map((s) => ({
+        ...s,
+        route: processId ? `/pipeline/${jobId}/process/${processId}/${s.id}` : s.route,
+      })),
+    );
+    const withoutFinalistas = base.filter((s) => s.id !== 'finalistas');
+    const finalistasBase = base.find((s) => s.id === 'finalistas');
+    const finalistasCard: PipelineStage = finalistasBase ?? {
+      id: 'finalistas',
+      label: STAGE_META.finalistas.label,
+      stageBadge: STAGE_META.finalistas.stageBadge,
+      status: 'not_started',
+      candidateCount: 0,
+      isAI: false,
+      route: `${stageBase}/finalistas`,
+      forceEnabled: true,
+    };
+    return [...withoutFinalistas, estudiosCard, finalistasCard];
+  }, [jobId, processId, selectionProcess, finalistaLocked]);
 
   // Derive progressStage from the highest active/completed phase and sync to context
   useEffect(() => {
@@ -295,7 +391,6 @@ export default function Pipeline() {
           marginLeft: '205px',
           flex: 1,
           padding: '40px',
-          maxWidth: '1000px',
         }}
       >
         {/* Back */}
@@ -370,66 +465,84 @@ export default function Pipeline() {
           </div>
 
           {/* Description */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '24px' }}>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                color: 'var(--color-text-muted)',
-                lineHeight: '1.7',
-                maxWidth: '600px',
-              }}
-            >
-              {jobDescription ?? 'Sin descripción disponible.'}
-            </p>
-            <Button variant="ghost" size="sm" style={{ flexShrink: 0 }}>
-              Ver RCP Completo
-              <ChevronRight size={14} />
-            </Button>
-          </div>
+          <p
+            style={{
+              margin: 0,
+              fontSize: '14px',
+              color: 'var(--color-text-muted)',
+              lineHeight: '1.7',
+            }}
+          >
+            {jobDescription ?? 'Sin descripción disponible.'}
+          </p>
         </div>
 
-        {/* Pipeline grid */}
+        {/* Funnel de candidatos */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '16px',
+            background: '#ffffff',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 24px 16px',
+            maxWidth: '900px',
           }}
         >
+          {/* Section title */}
+          <div
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 700,
+              fontSize: '12px',
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-primary)',
+              marginBottom: '4px',
+            }}
+          >
+            Funnel de candidatos
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
+            Haz click en una etapa para ver los candidatos
+          </div>
+
+          {/* Skeleton */}
           {loading && (
-            <>
-              {Array.from({ length: 3 }).map((_, col) => (
-                <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {/* Column header skeleton */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px', marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Skeleton width={32} height={32} borderRadius={8} />
-                      <Skeleton width={120} height={16} />
-                    </div>
-                    <Skeleton width={28} height={22} borderRadius={20} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '5px 12px' }}>
+                  <Skeleton width={8} height={8} borderRadius={4} />
+                  <Skeleton width={148} height={12} />
+                  <div style={{ flex: 1 }}>
+                    <Skeleton height={20} borderRadius={9999} />
                   </div>
-                  {/* Card skeletons */}
-                  {Array.from({ length: col === 0 ? 4 : col === 1 ? 3 : 2 }).map((_, j) => (
-                    <div key={j} style={{ background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-default)', padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                        <SkeletonCircle size={36} />
-                        <div style={{ flex: 1 }}>
-                          <Skeleton height={13} width="70%" style={{ marginBottom: '6px' }} />
-                          <Skeleton height={11} width="45%" />
-                        </div>
-                        <Skeleton width={36} height={28} borderRadius={20} />
-                      </div>
-                      <Skeleton height={6} width="100%" borderRadius={3} />
-                    </div>
-                  ))}
+                  <Skeleton width={100} height={26} />
                 </div>
               ))}
-            </>
+            </div>
           )}
-          {!loading && stages.map((stage) => (
-            <StageCard key={stage.id} stage={stage} />
-          ))}
+
+          {/* Funnel rows */}
+          {!loading && (() => {
+            const maxCount = Math.max(...stages.map((s) => s.candidateCount), 1);
+            return stages.map((stage, idx) => {
+              const prev = stages[idx - 1];
+              const convPct =
+                idx === 0
+                  ? 100
+                  : prev && prev.candidateCount > 0
+                  ? Math.round((stage.candidateCount / prev.candidateCount) * 100)
+                  : null;
+              return (
+                <FunnelRow
+                  key={stage.id}
+                  stage={stage}
+                  maxCount={maxCount}
+                  convPct={convPct}
+                  idx={idx}
+                />
+              );
+            });
+          })()}
         </div>
       </main>
     </div>

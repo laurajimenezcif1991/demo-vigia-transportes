@@ -1,27 +1,27 @@
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type ResumeValidationStatus = 'pending' | 'passed' | 'failed' | 'not_available';
-export type WaPrescreeningStatus = 'not_started' | 'in_progress' | 'completed';
-
-export interface PrescreeningProgress {
-  resumeValidation: {
-    status: ResumeValidationStatus;
-    failReason?: string;
-    matchedCriteria?: number;
-    totalCriteria?: number;
-    validatedAt?: string;
-  };
-  whatsappPrescreening: {
-    status: WaPrescreeningStatus;
-    completedAt?: string;
-  };
-}
-
 export type VacanteStatus = 'activa' | 'en_pausa' | 'cerrada';
 export type Priority = 'alta' | 'media' | 'baja';
 export type StageStatus = 'completed' | 'in_progress' | 'not_started';
 export type SalaryRange = 'en_rango' | 'fuera_de_rango';
-export type PipelineStageKey = 'scoring' | 'prescreening' | 'entrevistas' | 'evaluaciones';
+export type PipelineStageKey = 'scoring' | 'prescreening' | 'prueba_manejo' | 'entrevistas' | 'evaluaciones' | 'prueba_conocimiento' | 'estudios' | 'finalistas';
+
+// ── Prescreening two-step progress ───────────────────────────────────────────
+export type ResumeValidationStatus = 'pending' | 'passed' | 'failed' | 'not_available';
+export type WaPrescreeningStatus   = 'not_started' | 'in_progress' | 'completed';
+
+export interface PrescreeningProgress {
+  resumeValidation: {
+    status: ResumeValidationStatus;
+    validatedAt?: string;
+    matchedCriteria?: number;
+    totalCriteria?: number;
+    failReason?: string;
+  };
+  whatsappPrescreening: {
+    status: WaPrescreeningStatus;
+  };
+}
 
 export interface Vacante {
   id: string;
@@ -46,6 +46,8 @@ export interface PipelineStage {
   candidateCount: number;
   isAI: boolean;
   route: string;
+  /** When true the action button is enabled regardless of status (overrides not_started lock) */
+  forceEnabled?: boolean;
 }
 
 export interface Candidate {
@@ -79,10 +81,9 @@ export interface Candidate {
     logros: string[];
     senales: string[];
   };
-  pruebaManejo?: { status: 'pendiente' | 'agendada'; fecha?: string; hora?: string; lugar?: string };
   prescreeningAI?: {
     score: number;
-    status: 'continua' | 'pendiente' | 'rechazado';
+    status: 'continua' | 'pendiente' | 'rechazado' | 'no_realizada';
     resumen: string;
     noNegociables: EvalRow[];
     plusDetectados: string[];
@@ -91,17 +92,49 @@ export interface Candidate {
     experienciaLaboral?: { empresa: string; rol: string; periodo: string; descripcion: string }[];
   };
   psychTest?: PsychTestResult;
+  knowledgeTest?: KnowledgeTestResult;
+  hasCV?: boolean;
+  applicationHistory?: { count: number; lastDate?: string; status: 'recurrente' | 'primera_vez' };
+  rejectionType?: 'definitivo' | 'circunstancial' | null;
   runtVerification?: {
     cc: string;
     totalManifiestos: number;
     licenseCategories: { categoria: string; fechaExpedicion: string; fechaVencimiento: string }[];
+    tipoLicencia?: string;
+    vigencia?: string;
+    vehiculosExperiencia?: string[];
+    anosExperiencia?: number;
   };
+  pruebaManejo?: { status: 'agendada'; fecha: string; hora: string; lugar: string } | { status: 'pendiente' };
+  /** Interview verdict — shown as chip on candidate cards in entrevistas/estudios/finalistas */
+  veredictoEntrevista?: 'apto' | 'apto_reservas' | 'no_apto';
+  /** Two-step prescreening progress: resume validation → WA prescreening */
   prescreeningProgress?: PrescreeningProgress;
 }
 
 export interface NoNegociable {
   label: string;
   cumple: boolean;
+}
+
+export interface KnowledgeQuestion {
+  id: number;
+  category: string;
+  question: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+}
+
+export interface KnowledgeTestResult {
+  score: number;
+  totalQuestions: number;
+  correct: number;
+  incorrect: number;
+  observations: string;
+  externalUrl: string;
+  completedAt: string;
+  questions: KnowledgeQuestion[];
 }
 
 export interface EvalRow {
@@ -192,8 +225,8 @@ export const vacantes: Vacante[] = [
 export const getPipelineStages = (jobId: string): PipelineStage[] => [
   {
     id: 'scoring',
-    label: 'Verificación (RUNT/RNDC)',
-    stageBadge: 'Verificación',
+    label: 'Scoring IA',
+    stageBadge: 'Scoring',
     status: 'completed',
     candidateCount: 28,
     isAI: true,
@@ -219,8 +252,8 @@ export const getPipelineStages = (jobId: string): PipelineStage[] => [
   },
   {
     id: 'evaluaciones',
-    label: 'Evaluaciones',
-    stageBadge: 'Evaluaciones',
+    label: 'Pruebas',
+    stageBadge: 'Pruebas',
     status: 'in_progress',
     candidateCount: 8,
     isAI: false,
@@ -1303,6 +1336,33 @@ export const interviewData: CandidateInterview[] = [
   { candidateId: 'mv-23', hrStatus: 'completed', hmStatus: 'pending', hrFeedback: { destacados: 'Candidato con experiencia en ventas y manejo básico de CRM. Sin liderazgo de equipo documentado. Perfil insuficiente para gerencia comercial.', ratingA: 3, ratingB: 2, ratingC: 3, senalAlerta: 'Perfil por debajo del nivel gerencial mínimo.', recomendacion: 'no_seguro', date: '06 Mar 2025', duration: '30 min', interviewer: 'Fernanda Ríos - Gerente de Zona' }, hmLink: 'https://unio.app/eval/mv-23' },
   { candidateId: 'mv-24', hrStatus: 'completed', hmStatus: 'pending', hrFeedback: { destacados: 'Candidata con experiencia básica en ventas. Sin evidencia de liderazgo de equipo ni cumplimiento de metas documentado. Perfil de asesor junior.', ratingA: 2, ratingB: 3, ratingC: 3, senalAlerta: 'No cumple el perfil mínimo requerido.', recomendacion: 'no_seguro', date: '07 Mar 2025', duration: '25 min', interviewer: 'Fernanda Ríos - Gerente de Zona' }, hmLink: 'https://unio.app/eval/mv-24' },
   { candidateId: 'mv-25', hrStatus: 'completed', hmStatus: 'pending', hrFeedback: { destacados: 'Candidato con experiencia comercial básica. Aspiración fuera de rango y sin el perfil gerencial requerido. No cumple criterios mínimos.', ratingA: 2, ratingB: 2, ratingC: 3, senalAlerta: 'Aspiración fuera de rango y perfil insuficiente para el cargo.', recomendacion: 'no_seguro', date: '07 Mar 2025', duration: '25 min', interviewer: 'Fernanda Ríos - Gerente de Zona' }, hmLink: 'https://unio.app/eval/mv-25' },
+  // ─── Comfandi GCA — Gestor(a) Comercial Convenios y Alianzas Crédito ─────────
+  { candidateId: 'gca-1', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con trayectoria sólida en gestión comercial de convenios de libranza. Métricas documentadas: 14 convenios firmados en 2024 con cartera activa de $2.800M. Dominio completo del proceso desde prospección hasta legalización y seguimiento de indicadores de colocación.', ratingA: 5, ratingB: 4, ratingC: 5, senalAlerta: 'Confirmar disponibilidad para visitas de campo en el Área Metropolitana de Medellín.', recomendacion: 'definitivamente', date: '05 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil comercial excepcional para el cargo. Entiende con precisión el modelo de libranza y los ciclos de vinculación empresarial. Su historial de cumplimiento de metas y visión de portafolio complementario la ubican como la candidata de mayor impacto para el cargo.', ratingA: 5, ratingB: 5, ratingC: 4, senalAlerta: '', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '40 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-1', techTestMeta: { date: '10 Feb 2025', duration: '60 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' } },
+  { candidateId: 'gca-2', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con historial comprobado en apertura de convenios corporativos y profundización de portafolio financiero. Presenta indicadores propios: tasa de conversión del 38% en 2024 y 11 convenios nuevos firmados. Excelente capacidad de relacionamiento con áreas de RRHH y financieras de empresas afiliadas.', ratingA: 5, ratingB: 4, ratingC: 4, senalAlerta: 'Validar experiencia específica en libranza con cajas de compensación.', recomendacion: 'definitivamente', date: '05 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con visión comercial estratégica clara para el cargo. Identifica oportunidades de profundización del portafolio más allá del crédito inicial, lo que multiplica el valor del convenio. Muy buen ajuste con la cultura de relacionamiento a largo plazo de Comfandi.', ratingA: 5, ratingB: 4, ratingC: 5, senalAlerta: 'Confirmar disponibilidad de inicio inmediata.', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '40 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-2', techTestMeta: { date: '10 Feb 2025', duration: '60 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' } },
+  { candidateId: 'gca-3', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en gestión de convenios y vinculación empresarial con entidades del sector financiero. Manejo claro del proceso administrativo de legalización y seguimiento de indicadores. Cumplimiento de metas en 9 de 12 meses en cargo anterior.', ratingA: 4, ratingB: 5, ratingC: 4, senalAlerta: 'Confirmar experiencia puntual en convenios de libranza vs. convenios de otro tipo.', recomendacion: 'definitivamente', date: '06 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil equilibrado con buen entendimiento del cargo. La candidata comprende los ciclos de vinculación y tiene experiencia en la gestión documental y seguimiento de convenios activos. Ajuste cultural positivo con valores de Comfandi.', ratingA: 4, ratingB: 4, ratingC: 5, senalAlerta: 'Acompañar en los primeros meses en la gestión del portafolio complementario.', recomendacion: 'definitivamente', date: '08 Feb 2025', duration: '40 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-3', techTestMeta: { date: '11 Feb 2025', duration: '60 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' } },
+  { candidateId: 'gca-4', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con experiencia en prospección comercial y relacionamiento con empresas del sector manufacturero. Buen manejo del proceso de vinculación y conocimiento del producto libranza. Estructura clara en la presentación del proceso comercial.', ratingA: 4, ratingB: 3, ratingC: 4, senalAlerta: 'Confirmación de métricas de resultados propios pendiente — validar en segunda instancia.', recomendacion: 'definitivamente', date: '12 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con orientación comercial clara y buen relacionamiento. Entiende la dinámica del cargo aunque le falta profundidad en la gestión del portafolio complementario de Comfandi.', ratingA: 4, ratingB: 4, ratingC: 3, senalAlerta: 'Reforzar en la inducción el portafolio completo de servicios financieros de Comfandi.', recomendacion: 'definitivamente', date: '14 Feb 2025', duration: '35 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-4' },
+  { candidateId: 'gca-5', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en ventas de productos financieros y manejo de cuentas empresariales. Buen proceso de prospección y seguimiento de pipeline. Presentación clara de resultados alcanzados.', ratingA: 3, ratingB: 4, ratingC: 4, senalAlerta: 'Aspiración salarial fuera del rango aprobado — revisar alineación antes de avanzar.', recomendacion: 'definitivamente', date: '12 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con orientación al cliente y disciplina en seguimiento. La aspiración salarial es el único punto de tensión en el proceso.', ratingA: 4, ratingB: 3, ratingC: 4, senalAlerta: 'Revisar expectativa salarial y confirmar flexibilidad antes de decisión final.', recomendacion: 'con_reservas', date: '14 Feb 2025', duration: '35 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-5' },
+  { candidateId: 'gca-6', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con experiencia en gestión de convenios empresariales y conocimiento del proceso de libranza. Relacionamiento correcto y comprensión del ciclo comercial. Menor profundidad en gestión de indicadores propios.', ratingA: 4, ratingB: 3, ratingC: 3, senalAlerta: 'Reforzar conocimiento del portafolio financiero complementario de Comfandi.', recomendacion: 'definitivamente', date: '17 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil con base comercial correcta. Requiere acompañamiento en los primeros meses para alcanzar la autonomía esperada en el cargo.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Establecer metas de ramp-up claras en los primeros 90 días.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '30 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-6' },
+  { candidateId: 'gca-7', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en ventas de servicios y seguimiento de clientes. Conocimiento básico del proceso de convenios. Actitud positiva y disposición para aprender el portafolio de Comfandi.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Sin experiencia específica en libranza ni en gestión con departamentos de nómina.', recomendacion: 'con_reservas', date: '17 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con potencial comercial pero con brecha en el conocimiento técnico del producto libranza y los procesos de vinculación empresarial de Comfandi.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'La curva de aprendizaje en el producto libranza puede impactar los primeros resultados.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '30 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-7' },
+  { candidateId: 'gca-8', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con experiencia en atención al cliente y conocimiento básico del sector financiero. Presenta disposición para el cargo y comprende los aspectos fundamentales del relacionamiento comercial.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'Sin experiencia en prospección activa de empresas ni en gestión de convenios. Requiere formación intensiva.', recomendacion: 'con_reservas', date: '18 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil con disposición y actitud correcta pero con brechas significativas en la experiencia comercial requerida por el cargo.', ratingA: 3, ratingB: 3, ratingC: 3, senalAlerta: 'Validar si el plan de formación puede cubrir las brechas en el tiempo de ramp-up establecido.', recomendacion: 'con_reservas', date: '20 Feb 2025', duration: '30 min', interviewer: 'Julián Agudelo - Jefe Banca Empresarial' }, hmLink: 'https://unio.app/eval/gca-8' },
+  // ─── Comfandi GCV — Gestor(a) Calidad de Vida Crédito ─────────────────────────
+  { candidateId: 'gcv-1', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con historial sólido en venta consultiva de intangibles y seguimiento de portafolio de crédito. Métricas verificables: cumplimiento promedio 96% en meta mensual con 65 clientes activos en 2024. NPS personal de 71 en última medición semestral. Dominio del proceso desde originación hasta desembolso.', ratingA: 5, ratingB: 4, ratingC: 4, senalAlerta: 'Confirmar disponibilidad exclusiva presencial en Cali sin compromisos en otra empresa.', recomendacion: 'definitivamente', date: '05 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'La candidata entiende con profundidad el modelo de venta consultiva de crédito y su conexión con la calidad de vida del afiliado. Presenta visión más allá del producto: habla de seguimiento de vida financiera del cliente. Muy buen ajuste con el propósito de Comfandi.', ratingA: 5, ratingB: 5, ratingC: 4, senalAlerta: '', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '40 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-1', techTestMeta: { date: '10 Feb 2025', duration: '50 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' } },
+  { candidateId: 'gcv-2', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con trayectoria en gestión de portafolio de crédito de consumo y seguimiento activo de base de preaprobados. Historial de cumplimiento: 94% en meta anual de colocación. Presentación clara de métricas de conversión y pipeline.', ratingA: 4, ratingB: 5, ratingC: 4, senalAlerta: 'Validar experiencia en líneas de crédito hipotecario además del consumo.', recomendacion: 'definitivamente', date: '05 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con muy buen entendimiento del ciclo comercial de crédito. Domina el seguimiento desde originación hasta el desembolso y su capacidad de gestión de la cartera vencida fue especialmente destacable en la entrevista.', ratingA: 4, ratingB: 5, ratingC: 4, senalAlerta: 'Reforzar en la inducción el portafolio hipotecario que no manejó directamente.', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '40 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-2', techTestMeta: { date: '10 Feb 2025', duration: '50 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' } },
+  { candidateId: 'gcv-3', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en asesoría financiera de crédito y manejo de base de clientes. Seguimiento proactivo de portafolio y orientación clara al cumplimiento de metas. Disponibilidad presencial confirmada en Cali.', ratingA: 4, ratingB: 4, ratingC: 4, senalAlerta: 'Confirmar experiencia en gestión de cartera vencida y manejo de objeciones financieras.', recomendacion: 'definitivamente', date: '06 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con disciplina comercial sólida y orientación al cliente. Entiende el modelo de calidad de vida crediticia de Comfandi y presenta disposición para profundizar el portafolio más allá del crédito de consumo.', ratingA: 4, ratingB: 4, ratingC: 4, senalAlerta: 'Acompañar en los primeros meses en el manejo de la cartera hipotecaria.', recomendacion: 'definitivamente', date: '08 Feb 2025', duration: '40 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-3', techTestMeta: { date: '11 Feb 2025', duration: '50 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' } },
+  { candidateId: 'gcv-4', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con experiencia en servicios financieros y seguimiento de clientes. Buen manejo de herramientas de CRM y disciplina en seguimiento de pipeline. Aspiración salarial fuera del rango aprobado.', ratingA: 4, ratingB: 3, ratingC: 4, senalAlerta: 'Aspiración fuera de rango — confirmar flexibilidad antes de avanzar al proceso de decisión.', recomendacion: 'definitivamente', date: '12 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con comprensión del modelo de crédito de consumo y seguimiento de portafolio. La aspiración salarial es el principal punto de tensión en el proceso.', ratingA: 4, ratingB: 3, ratingC: 3, senalAlerta: 'Necesario alinear expectativa salarial antes de avanzar a decisión final.', recomendacion: 'con_reservas', date: '14 Feb 2025', duration: '35 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-4' },
+  { candidateId: 'gcv-5', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en atención al cliente en servicios financieros. Buena orientación al cumplimiento de metas y seguimiento de base de preaprobados. Disponibilidad presencial confirmada en Cali.', ratingA: 3, ratingB: 4, ratingC: 4, senalAlerta: 'Confirmar profundidad en la gestión autónoma de portafolio desde originación.', recomendacion: 'definitivamente', date: '12 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil con orientación al cliente y disciplina. Requiere mayor desarrollo en la autonomía para la gestión del pipeline de crédito sin supervisión directa.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Establecer metas de ramp-up con seguimiento quincenal en los primeros 3 meses.', recomendacion: 'con_reservas', date: '14 Feb 2025', duration: '35 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-5' },
+  { candidateId: 'gcv-6', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en ventas de servicios financieros y seguimiento de clientes en Cali. Conocimiento del producto crédito de consumo y manejo básico de base de preaprobados. Actitud positiva y disponibilidad presencial confirmada.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Sin experiencia en venta activa de crédito hipotecario ni libranza.', recomendacion: 'con_reservas', date: '17 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con disposición para el cargo y conocimiento básico del portafolio. Requiere acompañamiento en los primeros meses para desarrollar autonomía en la gestión de pipeline.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'Diseñar plan de onboarding con metas graduales por mes.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '30 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-6' },
+  { candidateId: 'gcv-7', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con experiencia en atención al cliente y servicios financieros básicos. Conoce el proceso de crédito de consumo. Actitud orientada al servicio y disponibilidad presencial en Cali.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'Sin experiencia comprobada en venta activa de intangibles con metas individuales.', recomendacion: 'con_reservas', date: '17 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Perfil básico para el cargo con disposición y actitud positiva. La brecha en experiencia de venta activa es significativa para el nivel de autonomía requerido.', ratingA: 3, ratingB: 3, ratingC: 3, senalAlerta: 'Evaluar si la curva de aprendizaje es compatible con los tiempos de ramp-up del cargo.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '30 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-7' },
+  { candidateId: 'gcv-8', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con experiencia en servicios al cliente y conocimiento del proceso de crédito de consumo. Disponibilidad presencial en Cali confirmada. Actitud proactiva y disposición para aprender el portafolio completo de Comfandi.', ratingA: 3, ratingB: 3, ratingC: 3, senalAlerta: 'Sin experiencia en seguimiento activo de pipeline ni en gestión de portafolio con metas.', recomendacion: 'con_reservas', date: '18 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con base correcta y actitud positiva. Las brechas en experiencia de venta activa requerirán un programa de formación sólido en los primeros meses.', ratingA: 3, ratingB: 3, ratingC: 3, senalAlerta: 'Validar plan de formación antes de la decisión final.', recomendacion: 'con_reservas', date: '20 Feb 2025', duration: '30 min', interviewer: 'Adriana Torres - Coordinadora UES Crédito Cali' }, hmLink: 'https://unio.app/eval/gcv-8' },
+  // ─── Comfandi CB — Científico(a) Comportamental ────────────────────────────────
+  { candidateId: 'cb-1', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con dominio metodológico excepcional en ciencias del comportamiento. Experiencia verificable en aplicación de EAST en proyectos de campo con 6 años de trayectoria. Producción académica indexada (2 artículos). Capacidad demostrada de transferencia metodológica a equipos no especializados con 85% de tasa de adopción en proyecto reciente.', ratingA: 5, ratingB: 5, ratingC: 4, senalAlerta: 'Confirmar disponibilidad para presencialidad en Bogotá y municipios aledaños.', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '50 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato excepcional para el cargo. Su experiencia combinando rigor científico con transferencia metodológica a equipos operativos es exactamente lo que Comfandi necesita para escalar el modelo de acompañamiento a lo largo de la vida. La capacidad de comunicar hallazgos complejos a orientadores y gerencia es un diferencial clave.', ratingA: 5, ratingB: 5, ratingC: 5, senalAlerta: '', recomendacion: 'definitivamente', date: '10 Feb 2025', duration: '55 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-1', techTestMeta: { date: '13 Feb 2025', duration: '90 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' } },
+  { candidateId: 'cb-2', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con trayectoria sólida en investigación aplicada con metodologías comportamentales. Experiencia de 5 años en diseño e implementación de pilotos con grupos de control. Publicaciones y reportes técnicos para entidades gubernamentales. Comunicación efectiva de hallazgos a audiencias no especializadas.', ratingA: 5, ratingB: 4, ratingC: 5, senalAlerta: 'Validar disponibilidad para trabajar con equipos de orientación escolar y psicosocial.', recomendacion: 'definitivamente', date: '07 Feb 2025', duration: '50 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con muy buen perfil para el cargo. Su experiencia en intervenciones de campo con metodología mixta y la capacidad de generar reportes técnicos accionables para tomadores de decisión son activos centrales para el modelo de Comfandi.', ratingA: 5, ratingB: 4, ratingC: 5, senalAlerta: 'Reforzar en la inducción el contexto específico de cajas de compensación.', recomendacion: 'definitivamente', date: '10 Feb 2025', duration: '50 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-2', techTestMeta: { date: '13 Feb 2025', duration: '90 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' } },
+  { candidateId: 'cb-3', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con 4 años en investigación comportamental aplicada y dominio de EAST. Manejo avanzado de R (tidyverse, análisis longitudinal). Experiencia en diagnósticos comportamentales con entrega de reportes ejecutivos. Disposición documentada para trabajo interdisciplinario.', ratingA: 4, ratingB: 5, ratingC: 4, senalAlerta: 'Confirmar experiencia en trabajo directo con equipos de orientación social no académicos.', recomendacion: 'definitivamente', date: '08 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con rigor metodológico sólido y buena capacidad de comunicación. La experiencia en transferencia metodológica a equipos operativos lo ubica bien para el cargo aunque requiere acompañamiento inicial en el contexto específico de educación y empleabilidad de Comfandi.', ratingA: 4, ratingB: 4, ratingC: 5, senalAlerta: 'Diseñar plan de inducción al contexto institucional de Comfandi en los primeros 60 días.', recomendacion: 'definitivamente', date: '11 Feb 2025', duration: '50 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-3', techTestMeta: { date: '14 Feb 2025', duration: '90 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' } },
+  { candidateId: 'cb-4', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con 4 años en investigación aplicada y experiencia en diseño de cuestionarios psicotécnicos validados. Manejo de SPSS y metodologías mixtas. Muy buena capacidad de comunicación de hallazgos a equipos no especializados.', ratingA: 4, ratingB: 4, ratingC: 4, senalAlerta: 'Confirmar dominio específico de metodología EAST o 3B más allá del conocimiento teórico.', recomendacion: 'definitivamente', date: '14 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con perfil sólido y buena comprensión del rol. Su experiencia en diagnósticos comportamentales y la claridad de comunicación son activos importantes. Requiere acompañamiento en la aplicación de EAST en contexto de campo.', ratingA: 4, ratingB: 4, ratingC: 4, senalAlerta: 'Reforzar en primeros meses la aplicación de EAST en contexto operativo.', recomendacion: 'definitivamente', date: '17 Feb 2025', duration: '40 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-4' },
+  { candidateId: 'cb-5', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con 3 años en investigación social aplicada y metodología cualitativa con ATLAS.ti. Experiencia en diagnósticos sociales y comunicación de resultados a gerencias de proyectos. Aspiración salarial fuera del rango aprobado.', ratingA: 4, ratingB: 4, ratingC: 3, senalAlerta: 'Aspiración salarial fuera de rango — revisar alineación antes del siguiente paso.', recomendacion: 'definitivamente', date: '14 Feb 2025', duration: '45 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con metodología sólida en investigación cualitativa. La aspiración salarial es el principal punto de tensión. Potencial de desarrollo en la aplicación de metodologías cuantitativas que el cargo requiere.', ratingA: 4, ratingB: 3, ratingC: 4, senalAlerta: 'Confirmar flexibilidad salarial y plan de desarrollo en metodologías cuantitativas.', recomendacion: 'con_reservas', date: '17 Feb 2025', duration: '40 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-5' },
+  { candidateId: 'cb-6', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con 3 años en investigación social y experiencia en análisis de datos para proyectos de empleabilidad. Manejo de metodologías mixtas y reportes de diagnóstico. Disponibilidad presencial en Bogotá confirmada.', ratingA: 4, ratingB: 3, ratingC: 3, senalAlerta: 'Sin experiencia directa en metodologías comportamentales (EAST/3B/COMB) en campo.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '40 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con base metodológica correcta pero con brecha en la aplicación de ciencias del comportamiento en contexto operativo. Requiere programa de formación específico en los primeros meses.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Diseñar programa de formación en EAST/3B en primeros 90 días.', recomendacion: 'con_reservas', date: '21 Feb 2025', duration: '35 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-6' },
+  { candidateId: 'cb-7', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidato con 2 años en investigación aplicada y experiencia en análisis estadístico básico con SPSS. Conocimiento teórico de ciencias del comportamiento y buena disposición para el trabajo interdisciplinario.', ratingA: 3, ratingB: 4, ratingC: 3, senalAlerta: 'Sin experiencia en diseño de pilotos iterativos ni en intervenciones de campo con grupos de control.', recomendacion: 'con_reservas', date: '19 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidato con base teórica correcta pero con brechas significativas en la aplicación práctica de metodologías comportamentales en campo. La curva de aprendizaje puede ser extensa.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'Evaluar si la brecha en experiencia práctica es compatible con los plazos de impacto esperados.', recomendacion: 'con_reservas', date: '21 Feb 2025', duration: '30 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-7' },
+  { candidateId: 'cb-8', hrStatus: 'completed', hmStatus: 'completed', hrFeedback: { destacados: 'Candidata con 2 años en investigación social y conocimiento básico de metodologías de diagnóstico. Actitud proactiva y orientación al aprendizaje. Disponibilidad presencial en Bogotá confirmada.', ratingA: 3, ratingB: 3, ratingC: 4, senalAlerta: 'Sin experiencia en intervenciones de campo ni en transferencia metodológica a equipos operativos.', recomendacion: 'con_reservas', date: '20 Feb 2025', duration: '35 min', interviewer: 'Carolina Mejía - Gestión Humana Comfandi' }, hmFeedback: { destacados: 'Candidata con disposición y actitud positiva pero con brechas importantes en la experiencia práctica requerida por el cargo. Requiere programa de formación extenso.', ratingA: 3, ratingB: 3, ratingC: 3, senalAlerta: 'Validar si el plan de formación puede cubrir las brechas en tiempo y presupuesto disponibles.', recomendacion: 'con_reservas', date: '22 Feb 2025', duration: '30 min', interviewer: 'Gloria Inés Montoya - Coordinadora Acompañamiento a lo Largo de la Vida' }, hmLink: 'https://unio.app/eval/cb-8' },
 ];
 
 
@@ -2067,7 +2127,20 @@ const venScoreOnly: Candidate[] = [
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
-// VACANTE VIGIA — CONDUCTOR C2 CARGA REFRIGERADA | Transportes Vigía S.A.S.
+// EXPORTS ACTUALIZADOS
+// ══════════════════════════════════════════════════════════════════════════════
+
+import {
+  COMFANDI_VACANTES,
+  COMFANDI_DESCRIPTIONS,
+  getComfandiPipelineStages,
+  COMFANDI_CANDIDATES_BY_STAGE,
+  COMFANDI_ALL_CANDIDATES,
+  gcaEval, gcvEval, cbEval,
+} from './mock-comfandi';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VACANTE DEMO TRANSPORTES — CONDUCTOR C2 CARGA REFRIGERADA
 // ══════════════════════════════════════════════════════════════════════════════
 
 const _vigiaRunt: { cc: string; cats: { c: string; e: string; v: string }[] }[] = [
@@ -2138,12 +2211,12 @@ const _vigiaPersonal: { label: string; value: string; status: 'ok' | 'warning' |
 ];
 
 const _vigiaTestSlots = [
-  { fecha: 'Sáb 10 May 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Vigía — Cota' },
-  { fecha: 'Sáb 10 May 2026', hora: '09:30 AM', lugar: 'Patio de maniobras Vigía — Cota' },
-  { fecha: 'Dom 11 May 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Vigía — Cota' },
+  { fecha: 'Sáb 21 Jun 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Demo Transportes — Cota' },
+  { fecha: 'Sáb 21 Jun 2026', hora: '09:30 AM', lugar: 'Patio de maniobras Demo Transportes — Cota' },
+  { fecha: 'Dom 22 Jun 2026', hora: '08:00 AM', lugar: 'Patio de maniobras Demo Transportes — Cota' },
 ];
 
-function _mkVigia(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' | 'evaluaciones' = 'scoring'): Candidate {
+function _mkVigia(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' | 'entrevistas' = 'scoring', extras?: Partial<Candidate>): Candidate {
   const hi = score >= 75; const md = score >= 58;
   const idx = parseInt(id.split('-')[1]) - 1;
   const job = _vigiaJobs[idx] ?? _vigiaJobs[0];
@@ -2152,11 +2225,12 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
   const licYears = hi ? Math.max(4, Math.round((score - 75) / 4) + 4) : md ? 2 : 1;
   const wrongCity = city === 'Bucaramanga' || city === 'Barranquilla';
   const personal = idx < _vigiaPersonal.length ? _vigiaPersonal[idx] : _vigiaPersonal[0];
-  const pre: Candidate['prescreeningAI'] = stage === 'prescreening' ? {
+  const hasPrescreeningStageVigia = stage === 'prescreening' || stage === 'entrevistas';
+  const pre: Candidate['prescreeningAI'] = hasPrescreeningStageVigia ? {
     score: Math.round(score * 0.97),
     status: hi ? 'continua' : md ? 'continua' : 'pendiente',
     resumen: hi
-      ? `${name} confirmó disponibilidad inmediata y motivación genuina por el cargo. Durante la conversación demonstró conocimiento práctico de rutas nacionales y manejo de carga refrigerada. Corroboró experiencia documentada en su hoja de vida y no presentó inconsistencias.`
+      ? `${name} confirmó disponibilidad inmediata y motivación genuina por el cargo. Durante la conversación demostró conocimiento práctico de rutas nacionales y manejo de carga refrigerada. Corroboró experiencia documentada en su hoja de vida y no presentó inconsistencias.`
       : md
       ? `${name} confirmó interés en la posición y disponibilidad de inicio en el corto plazo. Su historial de experiencia es consistente, aunque con menor profundidad en manejo específico de cadena de frío. Requiere validación de algunos detalles en entrevista.`
       : `${name} mostró interés básico pero presentó inconsistencias en las fechas de experiencia declaradas. La disponibilidad horaria para esquema domingo a domingo no fue confirmada de forma clara.`,
@@ -2182,39 +2256,6 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
     ],
   } : undefined;
-
-  // Prescreening progress — derived from score + idx for realistic variety
-  const _rvStatus: ResumeValidationStatus =
-    stage !== 'prescreening' ? 'pending'
-    : hi ? 'passed'
-    : md ? (idx % 4 === 0 ? 'failed' : idx % 4 === 1 ? 'pending' : 'passed')
-    : (idx % 3 === 0 ? 'pending' : 'failed');
-  const _waStatus: WaPrescreeningStatus =
-    _rvStatus !== 'passed' ? 'not_started'
-    : hi ? (idx % 5 === 0 ? 'in_progress' : 'completed')
-    : 'in_progress';
-  const prescreeningProgress: PrescreeningProgress | undefined = stage === 'prescreening' ? {
-    resumeValidation: {
-      status: _rvStatus,
-      ...((_rvStatus === 'failed') ? {
-        failReason: md
-          ? 'La HV no refleja el tiempo mínimo en el cargo más reciente registrado.'
-          : 'La HV no acredita la experiencia requerida en conducción de carga refrigerada.',
-        matchedCriteria: md ? 2 : 1,
-        totalCriteria: 6,
-        validatedAt: '2026-06-15',
-      } : _rvStatus === 'passed' ? {
-        matchedCriteria: hi ? 6 : 5,
-        totalCriteria: 6,
-        validatedAt: '2026-06-12',
-      } : {}),
-    },
-    whatsappPrescreening: {
-      status: _waStatus,
-      ...(_waStatus === 'completed' ? { completedAt: '2026-06-14' } : {}),
-    },
-  } : undefined;
-
   return {
     id, name, role: 'Conductor C2 Carga Refrigerada', sector: 'Transporte de Carga / Logística',
     years, location: `${city}, Colombia`,
@@ -2234,12 +2275,15 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
       cc: _vigiaRunt[idx]?.cc ?? '00000000',
       totalManifiestos: trips,
       licenseCategories: (_vigiaRunt[idx]?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (_vigiaRunt[idx]?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Tractocamión', 'Camión rígido 2 ejes', 'Furgón refrigerado (unidad de frío)'],
+      anosExperiencia: parseInt(years) || 1,
     },
-    ...(stage === 'evaluaciones'
+    ...(stage === 'entrevistas'
       ? { pruebaManejo: idx < _vigiaTestSlots.length ? { status: 'agendada' as const, ..._vigiaTestSlots[idx] } : { status: 'pendiente' as const } }
       : {}),
     ...(pre ? { prescreeningAI: pre } : {}),
-    ...(prescreeningProgress ? { prescreeningProgress } : {}),
     scoringAI: {
       score: Math.round(score * 0.95),
       status: score >= 58 ? 'continua' : 'pendiente',
@@ -2252,7 +2296,7 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
         { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: hi || (md && score >= 65) },
         { label: 'Mínimo 100 manifiestos de ruta verificados (RUNT/RNDC, últimos 5 años)', cumple: hi || (md && score >= 63) },
         { label: 'Residencia en Cota, municipios aledaños o Bogotá', cumple: !wrongCity },
-        { label: 'Expectativa salarial ≤ $4.000.000', cumple: salaryRange === 'en_rango' },
+        { label: 'Expectativa salarial ≤ $3.500.000', cumple: salaryRange === 'en_rango' },
       ],
       logros: hi
         ? [
@@ -2280,113 +2324,1312 @@ function _mkVigia(id: string, name: string, score: number, photo: string, initia
               ? `Candidato residente en ${city} — fuera de la cobertura geográfica requerida (Cota / municipios aledaños / Bogotá)`
               : 'Historial de viajes insuficiente — no supera el mínimo de 100 manifiestos verificables en RNDC',
             salaryRange === 'fuera_de_rango'
-              ? 'Expectativa salarial por encima del presupuesto del cargo ($4.000.000)'
+              ? 'Expectativa salarial por encima del presupuesto del cargo ($3.500.000)'
               : 'Período de expedición de licencia inferior al mínimo requerido de 2 años',
           ],
     },
+    veredictoEntrevista: (['entrevistas','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+      ? (score >= 78 ? 'apto' as const : score >= 62 ? 'apto_reservas' as const : 'no_apto' as const)
+      : undefined,
+    ...extras,
   };
 }
 
 const vigiaCandidates: Candidate[] = [
-  _mkVigia('mvc-1',  'Carlos Jiménez',         91, _p(1,  'men'), 'CJ', '#8750F6', 'Bogotá',       '12 Años', "$3'200.000", 'en_rango',       'evaluaciones'),
-  _mkVigia('mvc-2',  'Hernando Vargas',         88, _p(2,  'men'), 'HV', '#27BE69', 'Cota',         '10 Años', "$3'000.000", 'en_rango',       'evaluaciones'),
-  _mkVigia('mvc-3',  'Luis Fernando Moreno',    85, _p(3,  'men'), 'LM', '#295BFF', 'Mosquera',     '8 Años',  "$3'400.000", 'en_rango',       'evaluaciones'),
-  _mkVigia('mvc-4',  'Jhon Édison Pérez',       82, _p(4,  'men'), 'JP', '#F6A350', 'Bogotá',       '9 Años',  "$3'000.000", 'en_rango',       'evaluaciones'),
-  _mkVigia('mvc-5',  'Gustavo Rodríguez',       79, _p(5,  'men'), 'GR', '#8750F6', 'Funza',        '7 Años',  "$3'200.000", 'en_rango',       'evaluaciones'),
-  // Prescreening: 3 green (>=58), 2 not
+  _mkVigia('mvc-1',  'Carlos Jiménez',         91, _p(1,  'men'), 'CJ', '#8750F6', 'Bogotá',       '12 Años', "$3'200.000", 'en_rango',       'entrevistas'),
+  _mkVigia('mvc-2',  'Hernando Vargas',         88, _p(2,  'men'), 'HV', '#27BE69', 'Cota',         '10 Años', "$3'000.000", 'en_rango',       'entrevistas'),
+  _mkVigia('mvc-3',  'Luis Fernando Moreno',    85, _p(3,  'men'), 'LM', '#295BFF', 'Mosquera',     '8 Años',  "$3'400.000", 'en_rango',       'entrevistas'),
+  _mkVigia('mvc-4',  'Jhon Édison Pérez',       82, _p(4,  'men'), 'JP', '#F6A350', 'Bogotá',       '9 Años',  "$3'000.000", 'en_rango',       'entrevistas'),
+  _mkVigia('mvc-5',  'Gustavo Rodríguez',       79, _p(5,  'men'), 'GR', '#8750F6', 'Funza',        '7 Años',  "$3'200.000", 'en_rango',       'entrevistas'),
   _mkVigia('mvc-6',  'Édgar Ríos',              76, _p(6,  'men'), 'ER', '#27BE69', 'Cota',         '6 Años',  "$3'500.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-7',  'Alexánder Suárez',        72, _p(7,  'men'), 'AS', '#295BFF', 'Madrid',       '5 Años',  "$3'100.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-8',  'William Castaño',         66, _p(8,  'men'), 'WC', '#F6A350', 'Bogotá',       '6 Años',  "$2'900.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-9',  'Orlando Medina',          54, _p(9,  'men'), 'OM', '#8750F6', 'Mosquera',     '5 Años',  "$3'300.000", 'en_rango',       'prescreening'),
   _mkVigia('mvc-10', 'Pablo Acosta',            49, _p(10, 'men'), 'PA', '#27BE69', 'Bogotá',       '5 Años',  "$3'000.000", 'en_rango',       'prescreening'),
-  // Scoring: 5 green (>=58), 5 not — ordered highest to lowest
-  _mkVigia('mvc-11', 'Nelson Cruz',             81, _p(11, 'men'), 'NC', '#295BFF', 'Bogotá',       '6 Años',  "$3'200.000", 'en_rango'),
-  _mkVigia('mvc-12', 'William Huertas',         78, _p(12, 'men'), 'WH', '#F6A350', 'Bogotá',       '5 Años',  "$3'000.000", 'en_rango'),
-  _mkVigia('mvc-13', 'Fredy Gutiérrez',         74, _p(13, 'men'), 'FG', '#8750F6', 'Funza',        '5 Años',  "$3'400.000", 'en_rango'),
-  _mkVigia('mvc-14', 'Germán Parra',            70, _p(14, 'men'), 'GP', '#27BE69', 'Bogotá',       '4 Años',  "$3'100.000", 'en_rango'),
-  _mkVigia('mvc-15', 'Álvaro Ramos',            63, _p(15, 'men'), 'AR', '#295BFF', 'Cota',         '4 Años',  "$3'200.000", 'en_rango'),
-  _mkVigia('mvc-16', 'Ricardo Bermúdez',        55, _p(1,  'men'), 'RB', '#F65078', 'Bogotá',       '3 Años',  "$3'100.000", 'en_rango'),
-  _mkVigia('mvc-17', 'Javier Morales',          50, _p(2,  'men'), 'JM', '#27BE69', 'Barranquilla', '2 Años',  "$3'000.000", 'en_rango'),
-  _mkVigia('mvc-18', 'Edwin Salcedo',           45, _p(3,  'men'), 'ES', '#F6A350', 'Bogotá',       '2 Años',  "$4'800.000", 'fuera_de_rango'),
-  _mkVigia('mvc-19', 'Raúl Quintero',           40, _p(4,  'men'), 'RQ', '#295BFF', 'Cali',         '1 Año',   "$5'000.000", 'fuera_de_rango'),
-  _mkVigia('mvc-20', 'Andrés Castellanos',      34, _p(5,  'men'), 'AC', '#8750F6', 'Bogotá',       '1 Año',   "$2'800.000", 'en_rango'),
+  _mkVigia('mvc-11', 'Nelson Cruz',             81, _p(11, 'men'), 'NC', '#295BFF', 'Bogotá',       '6 Años',  "$3'200.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-12', 'William Huertas',         78, _p(12, 'men'), 'WH', '#F6A350', 'Bogotá',       '5 Años',  "$3'000.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-13', 'Fredy Gutiérrez',         74, _p(13, 'men'), 'FG', '#8750F6', 'Funza',        '5 Años',  "$3'400.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-14', 'Germán Parra',            70, _p(14, 'men'), 'GP', '#27BE69', 'Bogotá',       '4 Años',  "$3'100.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-15', 'Álvaro Ramos',            63, _p(15, 'men'), 'AR', '#295BFF', 'Cota',         '4 Años',  "$3'200.000", 'en_rango',       'prescreening'),
+  _mkVigia('mvc-16', 'Ricardo Bermúdez',   55, _p(1, 'men'), 'RB', '#F65078', 'Bogotá',       '3 Años', "$3'100.000", 'en_rango',       'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkVigia('mvc-17', 'Javier Morales',    50, _p(2, 'men'), 'JM', '#27BE69', 'Barranquilla', '2 Años', "$3'000.000", 'en_rango',       'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkVigia('mvc-18', 'Edwin Salcedo',     45, _p(3, 'men'), 'ES', '#F6A350', 'Bogotá',       '2 Años', "$4'800.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkVigia('mvc-19', 'Raúl Quintero',     40, _p(4, 'men'), 'RQ', '#295BFF', 'Cali',         '1 Año',  "$5'000.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkVigia('mvc-20', 'Andrés Castellanos',34, _p(5, 'men'), 'AC', '#8750F6', 'Bogotá',       '1 Año',  "$2'800.000", 'en_rango',       'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  // Prueba de manejo detailed candidates
+  _mkVigia('mvc-21', 'Bernardo Ocampo',         86, _p(6,  'men'), 'BO', '#27BE69', 'Bogotá',       '8 Años',  "$3'200.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-22', 'Ernesto Velandia',        83, _p(7,  'men'), 'EV', '#F6A350', 'Bogotá',       '7 Años',  "$3'100.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-23', 'Hugo Manrique',           79, _p(8,  'men'), 'HM', '#295BFF', 'Cota',         '6 Años',  "$3'300.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-24', 'Ramiro Fuentes',          76, _p(9,  'men'), 'RF', '#8750F6', 'Bogotá',       '6 Años',  "$3'000.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-25', 'Álvaro Cáceres',          72, _p(10, 'men'), 'AC', '#F65078', 'Bogotá',       '5 Años',  "$3'200.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-26', 'Édgar Montoya',           68, _p(11, 'men'), 'EM', '#27BE69', 'Funza',        '5 Años',  "$3'100.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-27', 'Humberto Gaitán',         64, _p(12, 'men'), 'HG', '#F6A350', 'Bogotá',       '4 Años',  "$3'000.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-28', 'Iván Giraldo',            60, _p(13, 'men'), 'IG', '#295BFF', 'Bogotá',       '4 Años',  "$3'200.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-29', 'Julián Ariza',            56, _p(14, 'men'), 'JA', '#8750F6', 'Mosquera',     '3 Años',  "$3'100.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-30', 'Leandro Cifuentes',       51, _p(15, 'men'), 'LC', '#27BE69', 'Bogotá',       '3 Años',  "$3'000.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-31', 'Milton Bernal',           47, _p(1,  'men'), 'MB', '#F6A350', 'Bogotá',       '2 Años',  "$2'900.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-32', 'Néstor Figueroa',         43, _p(2,  'men'), 'NF', '#295BFF', 'Bogotá',       '2 Años',  "$2'900.000", 'en_rango',       'prueba_manejo'),
+  _mkVigia('mvc-33', 'Omar Londoño',            38, _p(3,  'men'), 'OL', '#F65078', 'Bogotá',       '1 Año',   "$2'900.000", 'en_rango',       'prueba_manejo'),
+];
+
+const vigiaScoring       = vigiaCandidates.filter(c => c.currentStage === 'scoring');
+const vigiaPrescreening  = vigiaCandidates.filter(c => c.currentStage === 'prescreening');
+const vigiaPruebaManejo  = vigiaCandidates.filter(c => c.currentStage === 'prueba_manejo');
+const vigiaEntrevistas   = vigiaCandidates.filter(c => c.currentStage === 'entrevistas');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VACANTE 2 — CONDUCTOR C2 TRANSPORTE PÚBLICO (SITP/TM)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _transpPubRunt: { cc: string; cats: { c: string; e: string; v: string }[] }[] = [
+  { cc: '80124567', cats: [{ c:'C2', e:'15/03/2022', v:'15/03/2025' }, { c:'B2', e:'15/03/2022', v:'15/03/2032' }] },
+  { cc: '1019234567', cats: [{ c:'C2', e:'20/07/2023', v:'20/07/2026' }, { c:'A2', e:'05/01/2012', v:'05/01/2029' }] },
+  { cc: '79345678', cats: [{ c:'C2', e:'10/11/2023', v:'10/11/2026' }, { c:'B1', e:'10/11/2023', v:'10/11/2033' }] },
+  { cc: '1023456789', cats: [{ c:'C2', e:'08/02/2024', v:'08/02/2027' }, { c:'B2', e:'08/02/2024', v:'08/02/2034' }] },
+  { cc: '80567890', cats: [{ c:'C2', e:'25/05/2023', v:'25/05/2026' }] },
+  { cc: '1045678901', cats: [{ c:'C2', e:'12/09/2024', v:'12/09/2027' }] },
+  { cc: '79678901', cats: [{ c:'C2', e:'03/04/2023', v:'03/04/2026' }, { c:'A2', e:'18/08/2015', v:'18/08/2028' }] },
+  { cc: '1056789012', cats: [{ c:'C2', e:'28/01/2024', v:'28/01/2027' }] },
+  { cc: '80789012', cats: [{ c:'C2', e:'16/06/2023', v:'16/06/2026' }] },
+  { cc: '1067890123', cats: [{ c:'C2', e:'05/10/2024', v:'05/10/2027' }] },
+  { cc: '79890123', cats: [{ c:'C2', e:'22/12/2023', v:'22/12/2026' }] },
+  { cc: '1078901234', cats: [{ c:'C2', e:'14/03/2024', v:'14/03/2027' }] },
+  { cc: '80901234', cats: [{ c:'C2', e:'07/08/2023', v:'07/08/2026' }] },
+  { cc: '1089012345', cats: [{ c:'C2', e:'30/05/2025', v:'30/05/2028' }] },
+  { cc: '79012345', cats: [{ c:'C2', e:'19/01/2024', v:'19/01/2027' }] },
+];
+
+const _transpPubJobs = [
+  { c: 'Consorcio Express S.A.S.',  r: 'Conductor SITP',          d: '01/2025' },
+  { c: 'MiBus S.A.S.',              r: 'Conductor TransMilenio',   d: '03/2025' },
+  { c: 'GMOVIL S.A.S.',             r: 'Conductor SITP',          d: '11/2024' },
+  { c: 'SOI S.A.S.',                r: 'Conductor Articulado',    d: '12/2024' },
+  { c: 'Transdev Colombia S.A.S.',  r: 'Conductor Bus Urbano',    d: '02/2025' },
+  { c: 'Masivo Bogotá S.A.',        r: 'Conductor SITP Troncal',  d: '01/2025' },
+  { c: 'Conexión Móvil S.A.S.',     r: 'Conductor Bus Urbano',    d: '04/2024' },
+  { c: 'Transmilenio Alianza',      r: 'Conductor Articulado',    d: '10/2024' },
+  { c: 'Empresa Metro Bus S.A.S.',  r: 'Conductor SITP',          d: '06/2024' },
+  { c: 'Ruta & Futuro S.A.S.',      r: 'Conductor Bus Urbano',    d: '09/2024' },
+];
+
+const _transpPubExpPrev = [
+  { c: 'Consorcio Express S.A.S.',  r: 'Conductor SITP',         periodo: '2020–2022', desc: 'Operación de ruta SITP en zona norte de Bogotá. Gestión de pasajeros, cumplimiento de itinerarios y reporte de novedades en plataforma SISCOVID.' },
+  { c: 'MiBus S.A.S.',              r: 'Conductor Articulado',   periodo: '2019–2021', desc: 'Conducción de bus articulado TransMilenio en troncal Caracas. Cumplimiento de frecuencias, manejo de pasajeros en hora pico y registro de incidentes.' },
+  { c: 'GMOVIL S.A.S.',             r: 'Conductor SITP',         periodo: '2018–2020', desc: 'Operación de rutas periféricas SITP en Bosa y Kennedy. Manejo de recaudo electrónico y atención al usuario.' },
+  { c: 'Transdev Colombia',         r: 'Conductor Bus Urbano',   periodo: '2021–2023', desc: 'Conducción urbana en rutas complementarias. Manejo de pasajeros con movilidad reducida y cumplimiento de estándares de servicio.' },
+  { c: 'SOI S.A.S.',                r: 'Conductor Articulado',   periodo: '2020–2022', desc: 'Operación articulado en corredor NQS. Turno nocturno, gestión de incidentes en vía y mantenimiento básico preventivo.' },
+];
+
+function _mkTranspPub(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' | 'entrevistas' = 'scoring', extras?: Partial<Candidate>): Candidate {
+  const hi = score >= 75; const md = score >= 58;
+  const idx = Math.max(0, parseInt(id.split('-')[1]) - 1) || 0;
+  const job = _transpPubJobs[idx % _transpPubJobs.length] ?? _transpPubJobs[0];
+  const prevJob = _transpPubExpPrev[idx % _transpPubExpPrev.length] ?? _transpPubExpPrev[0];
+  const trips = hi ? Math.round(180 + (score - 75) * 10) : md ? Math.round(80 + (score - 58) * 4) : Math.round(25 + score * 0.4);
+  const licYears = hi ? Math.max(3, Math.round((score - 75) / 5) + 3) : md ? 2 : 1;
+  const wrongCity = city === 'Medellín' || city === 'Cali';
+  const runt = _transpPubRunt[idx % _transpPubRunt.length];
+  const hasPrescreeningStageTP = stage === 'prescreening' || stage === 'entrevistas';
+  const pre: Candidate['prescreeningAI'] = hasPrescreeningStageTP ? {
+    score: Math.round(score * 0.96),
+    status: hi ? 'continua' : md ? 'continua' : 'pendiente',
+    resumen: hi
+      ? `${name} confirmó licencia C2 vigente y record vial limpio. Con ${years} de experiencia en transporte público, demostró conocimiento del protocolo de servicio al usuario y disponibilidad total para turnos rotativos.`
+      : md
+      ? `${name} tiene licencia C2 vigente y experiencia básica en transporte urbano. La disponibilidad para turnos nocturnos y festivos requiere confirmación adicional.`
+      : `${name} manifestó incertidumbre sobre la disponibilidad para turnos rotativos. Su historial de experiencia en transporte público no fue confirmado con detalle.`,
+    noNegociables: [
+      { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', score: hi ? score - 1 : md ? score - 7 : score - 18, evidencia: hi ? `Confirmó licencia C2 vigente y relató proceso de renovación reciente. Sin suspensiones.` : md ? `Licencia C2 vigente pero con antigüedad cercana al mínimo.` : `No pudo confirmar estado exacto de vigencia de licencia.` } as EvalRow,
+      { label: 'Sin comparendos activos ni suspensiones en RUNT', score: hi ? score : md ? score - 5 : score - 20, evidencia: hi ? `Declara record limpio verificado en RUNT. Consistente con etapa anterior.` : md ? `No reporta comparendos activos, pero hay período sin información.` : `Mencionó una multa pendiente de pago.` } as EvalRow,
+      { label: 'Disponibilidad para turnos rotativos (incluye fines de semana y festivos)', score: hi ? score - 2 : md ? score - 6 : score - 15, evidencia: hi ? `Confirma disponibilidad total, ha operado en turnos nocturnos y dominicales previamente.` : md ? `Acepta turnos rotativos con condiciones; prefiere no trabajar domingo.` : `Expresó limitaciones para trabajar en festivos.` } as EvalRow,
+      { label: 'Experiencia mínima 2 años en transporte público o carga', score: hi ? score - 1 : md ? score - 8 : score - 12, evidencia: hi ? `${years} de experiencia en transporte público urbano con múltiples operadores SITP.` : md ? `Experiencia confirmada pero con interrupciones en el historial.` : `Experiencia inferior a 2 años en transporte público formal.` } as EvalRow,
+    ],
+    plusDetectados: hi
+      ? [`Conocimiento de rutas SITP en corredores norte y occidental de Bogotá`, `Manejo de articulados TransMilenio con certificación vigente`, `Actitud de servicio al usuario evidenciada durante la entrevista`]
+      : md
+      ? [`Disposición para capacitación en manejo de articulados`, `Puntualidad y compromiso con los horarios declarado consistentemente`]
+      : [`Disposición general para aprender la operación si se clarifica esquema de turnos`],
+    senales: hi
+      ? [`Confirmar si tiene experiencia específica en articulados o solo buses padrones`]
+      : md
+      ? [`Validar disponibilidad festivos en contrato`, `Confirmar historial en RUNT antes de avanzar`]
+      : [`Aclarar situación del comparendo pendiente`, `Confirmar disponibilidad real para turnos rotativos`],
+    entornoPersonal: [
+      { label: 'Municipio', value: city, status: wrongCity ? 'warning' : 'ok' },
+      { label: 'Disponibilidad', value: hi ? 'Inmediata' : '15 días de preaviso', status: hi ? 'ok' : 'neutral' },
+      { label: 'Turnos rotativos', value: hi ? 'Disponibilidad total' : 'Disponibilidad parcial', status: hi ? 'ok' : 'warning' },
+    ],
+    experienciaLaboral: [
+      { empresa: job.c, rol: job.r, periodo: hi ? '2023 – Presente' : `2022 – ${job.d}`, descripcion: hi ? `Operación de ruta ${job.r} con cumplimiento de frecuencias y atención al usuario. ${trips} servicios completados sin incidentes mayores.` : `Conducción en ruta urbana. Experiencia en manejo de pasajeros y recaudo electrónico.` },
+      { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
+    ],
+  } : undefined;
+  return {
+    id, name, role: 'Conductor C2 Transporte Público', sector: 'Transporte Público / SITP',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor de transporte público urbano con licencia C2 y experiencia en operación de rutas SITP y TransMilenio. Orientado al servicio al usuario, cumplimiento de frecuencias y protocolos de seguridad vial.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: score >= 68,
+    ...(score >= 68 ? { currentCompany: job.c, currentRole: job.r } : { lastCompany: job.c, lastRole: job.r, lastDate: job.d }),
+    superpoder: hi ? '"Servicio al usuario impecable y cero incidentes en operación urbana"' : md ? '"Conocimiento de rutas y cumplimiento de frecuencias SITP"' : '"Disposición y ganas de crecer en el sector transporte"',
+    aspiration, budget: "$2'800.000", salaryRange, currentStage: stage,
+    runtVerification: {
+      cc: runt?.cc ?? '00000000',
+      totalManifiestos: trips,
+      licenseCategories: (runt?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (runt?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Bus articulado TransMilenio', 'Bus padrón SITP', 'Bus urbano'],
+      anosExperiencia: parseInt(years) || 1,
+    },
+    ...(pre ? { prescreeningAI: pre } : {}),
+    scoringAI: {
+      score: Math.round(score * 0.95),
+      status: score >= 58 ? 'continua' : 'pendiente',
+      resumen: hi
+        ? `${name} cumple todos los criterios de verificación. Licencia C2 con ${licYears}+ años, ${trips} servicios SITP registrados y sin comparendos activos en RUNT.`
+        : md
+        ? `${name} cumple parcialmente. Algunos criterios presentan observaciones que requieren validación adicional.`
+        : `${name} no cumple los requisitos mínimos. Se identificaron brechas en licencia, historial de servicios o disponibilidad.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: hi || (md && score >= 65) },
+        { label: 'Sin comparendos activos ni suspensiones (RUNT)', cumple: hi || (md && score >= 62) },
+        { label: 'Disponibilidad para turnos rotativos (incluye festivos)', cumple: !wrongCity && (hi || (md && score >= 60)) },
+        { label: 'Residencia en Bogotá o municipios del área metropolitana', cumple: !wrongCity },
+      ],
+      logros: hi
+        ? [`${trips} servicios urbanos registrados en SITP — supera umbral mínimo de 100 servicios`, `Licencia C2 con ${licYears} años de expedición, sin suspensiones en RUNT`, 'Cero comparendos activos ni multas pendientes']
+        : md
+        ? [`${trips} servicios registrados — cerca del umbral mínimo requerido`, 'Licencia C2 vigente, período de expedición en límite mínimo']
+        : ['Historial de servicios insuficiente en sistema SITP'],
+      senales: hi
+        ? ['Confirmar disponibilidad para turno nocturno si la ruta lo requiere']
+        : md
+        ? ['Validar historial completo de servicios en plataforma SITP', 'Confirmar disponibilidad en festivos directamente en entrevista']
+        : [wrongCity ? `Candidato residente en ${city} — fuera del área metropolitana de Bogotá` : 'Historial de servicios insuficiente o comparendos sin regularizar'],
+    },
+    veredictoEntrevista: (['entrevistas','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+      ? (score >= 78 ? 'apto' as const : score >= 62 ? 'apto_reservas' as const : 'no_apto' as const)
+      : undefined,
+    ...extras,
+  };
+}
+
+const transpPubCandidates: Candidate[] = [
+  _mkTranspPub('tp-1',  'Rodrigo Castellanos',    93, _p(16, 'men'), 'RC', '#8750F6', 'Bogotá',      '14 Años', "$2'800.000", 'en_rango',       'entrevistas', { applicationHistory: { count: 3, lastDate: '2024-08', status: 'recurrente' } }),
+  _mkTranspPub('tp-2',  'Camilo Reyes',            89, _p(17, 'men'), 'CR', '#27BE69', 'Soacha',      '11 Años', "$2'700.000", 'en_rango',       'entrevistas', { applicationHistory: { count: 2, lastDate: '2025-01', status: 'recurrente' } }),
+  _mkTranspPub('tp-3',  'Humberto Ávila',          86, _p(18, 'men'), 'HA', '#295BFF', 'Bogotá',      '9 Años',  "$2'900.000", 'en_rango',       'entrevistas', { applicationHistory: { count: 1, status: 'primera_vez' }, rejectionType: 'circunstancial' }),
+  _mkTranspPub('tp-4',  'Mauricio Soto',           83, _p(19, 'men'), 'MS', '#F6A350', 'Bogotá',      '8 Años',  "$2'800.000", 'en_rango',       'entrevistas', { applicationHistory: { count: 2, lastDate: '2024-11', status: 'recurrente' }, rejectionType: 'definitivo' }),
+  _mkTranspPub('tp-5',  'Libardo Pinzón',          80, _p(20, 'men'), 'LP', '#8750F6', 'Chía',        '7 Años',  "$2'700.000", 'en_rango',       'entrevistas'),
+  _mkTranspPub('tp-6',  'Julián Méndez',           77, _p(21, 'men'), 'JM', '#27BE69', 'Bogotá',      '6 Años',  "$2'800.000", 'en_rango',       'prescreening', { hasCV: false }),
+  _mkTranspPub('tp-7',  'Ernesto Vásquez',         73, _p(22, 'men'), 'EV', '#295BFF', 'Bogotá',      '5 Años',  "$2'600.000", 'en_rango',       'prescreening', { hasCV: false }),
+  _mkTranspPub('tp-8',  'Samuel Giraldo',          68, _p(23, 'men'), 'SG', '#F6A350', 'Soacha',      '5 Años',  "$2'700.000", 'en_rango',       'prescreening', { hasCV: false }),
+  _mkTranspPub('tp-9',  'Alberto Pedraza',         55, _p(24, 'men'), 'AP', '#8750F6', 'Bogotá',      '4 Años',  "$2'500.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-10', 'Ignacio Forero',          48, _p(25, 'men'), 'IF', '#27BE69', 'Bogotá',      '3 Años',  "$2'600.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-11', 'Diego Cárdenas',          84, _p(26, 'men'), 'DC', '#295BFF', 'Bogotá',      '7 Años',  "$2'800.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-12', 'Francisco Patiño',        80, _p(27, 'men'), 'FP', '#F6A350', 'Bogotá',      '6 Años',  "$2'700.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-13', 'Jesús Rojas',             76, _p(28, 'men'), 'JR', '#8750F6', 'Madrid',      '5 Años',  "$2'800.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-14', 'Manuel Espitia',          72, _p(29, 'men'), 'ME', '#27BE69', 'Bogotá',      '4 Años',  "$2'700.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-15', 'Óscar Clavijo',           65, _p(30, 'men'), 'OC', '#295BFF', 'Bogotá',      '4 Años',  "$2'600.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-16', 'Roberto Fonseca',         57, _p(31, 'men'), 'RF', '#F65078', 'Bogotá',      '3 Años',  "$2'500.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-17', 'Jairo Montaño',           51, _p(32, 'men'), 'JM', '#27BE69', 'Cali',        '2 Años',  "$2'600.000", 'en_rango',       'prescreening'),
+  _mkTranspPub('tp-18', 'Luis Angarita',    46, _p(33, 'men'), 'LA', '#F6A350', 'Bogotá',   '2 Años', "$3'500.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkTranspPub('tp-19', 'Pedro Salamanca', 41, _p(34, 'men'), 'PS', '#295BFF', 'Medellín', '1 Año',  "$3'800.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkTranspPub('tp-20', 'Sergio Amaya',    36, _p(35, 'men'), 'SA', '#8750F6', 'Bogotá',   '1 Año',  "$2'400.000", 'en_rango',       'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  // Prueba de manejo detailed candidates
+  _mkTranspPub('tp-21', 'Carlos Medina',           87, _p(16, 'men'), 'CM', '#27BE69', 'Bogotá',      '9 Años',  "$2'800.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-22', 'Andrés Duarte',           83, _p(17, 'men'), 'AD', '#F6A350', 'Bogotá',      '8 Años',  "$2'700.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-23', 'Hernán Molina',           79, _p(18, 'men'), 'HM', '#295BFF', 'Soacha',      '7 Años',  "$2'900.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-24', 'Álvaro Correa',           75, _p(19, 'men'), 'AC', '#8750F6', 'Bogotá',      '6 Años',  "$2'800.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-25', 'Gustavo Pulido',          71, _p(20, 'men'), 'GP', '#F65078', 'Bogotá',      '5 Años',  "$2'700.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-26', 'Elkin Moreno',            67, _p(21, 'men'), 'EL', '#27BE69', 'Bogotá',      '5 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-27', 'Marco Bernal',            63, _p(22, 'men'), 'MB', '#F6A350', 'Chía',        '4 Años',  "$2'700.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-28', 'Fidel Suárez',            59, _p(23, 'men'), 'FS', '#295BFF', 'Bogotá',      '4 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-29', 'Israel Nieto',            54, _p(24, 'men'), 'IN', '#8750F6', 'Bogotá',      '3 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-30', 'Fabio León',              49, _p(25, 'men'), 'FL', '#27BE69', 'Bogotá',      '3 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-31', 'Óscar Serrano',           44, _p(26, 'men'), 'OS', '#F6A350', 'Bogotá',      '2 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-32', 'Misael Gómez',            39, _p(27, 'men'), 'MG', '#295BFF', 'Bogotá',      '2 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkTranspPub('tp-33', 'Tito Vargas',             34, _p(28, 'men'), 'TV', '#F65078', 'Bogotá',      '1 Año',   "$2'400.000", 'en_rango',       'prueba_manejo'),
 ];
 
 // ══════════════════════════════════════════════════════════════════════════════
-// EXPORTS ACTUALIZADOS
+// VACANTE 3 — CONDUCTOR C2 DISTRIBUCIÓN URBANA (ÚLTIMA MILLA)
 // ══════════════════════════════════════════════════════════════════════════════
 
+const _distribRunt: { cc: string; cats: { c: string; e: string; v: string }[] }[] = [
+  { cc: '80234567', cats: [{ c:'C2', e:'05/02/2022', v:'05/02/2025' }, { c:'B2', e:'05/02/2022', v:'05/02/2032' }] },
+  { cc: '1029345678', cats: [{ c:'C2', e:'18/06/2023', v:'18/06/2026' }] },
+  { cc: '79456789', cats: [{ c:'C2', e:'30/10/2023', v:'30/10/2026' }, { c:'B1', e:'30/10/2023', v:'30/10/2033' }] },
+  { cc: '1034567890', cats: [{ c:'C2', e:'14/01/2024', v:'14/01/2027' }] },
+  { cc: '80678901', cats: [{ c:'C2', e:'22/04/2023', v:'22/04/2026' }] },
+  { cc: '1050789012', cats: [{ c:'C2', e:'07/08/2024', v:'07/08/2027' }] },
+  { cc: '79789012', cats: [{ c:'C2', e:'25/03/2023', v:'25/03/2026' }] },
+  { cc: '1061890123', cats: [{ c:'C2', e:'12/12/2023', v:'12/12/2026' }] },
+  { cc: '80890123', cats: [{ c:'C2', e:'03/07/2023', v:'03/07/2026' }] },
+  { cc: '1072901234', cats: [{ c:'C2', e:'28/09/2024', v:'28/09/2027' }] },
+  { cc: '79901234', cats: [{ c:'C2', e:'15/02/2024', v:'15/02/2027' }] },
+  { cc: '1083012345', cats: [{ c:'C2', e:'01/06/2024', v:'01/06/2027' }] },
+  { cc: '80012345', cats: [{ c:'C2', e:'20/11/2023', v:'20/11/2026' }] },
+  { cc: '1094123456', cats: [{ c:'C2', e:'08/04/2025', v:'08/04/2028' }] },
+  { cc: '79123456', cats: [{ c:'C2', e:'27/08/2023', v:'27/08/2026' }] },
+];
+
+const _distribJobs = [
+  { c: 'Última Milla Express S.A.S.', r: 'Conductor Distribución Urbana', d: '01/2025' },
+  { c: 'Red Logística S.A.S.',         r: 'Conductor Reparto Urbano',      d: '03/2025' },
+  { c: 'TuEnvío Colombia S.A.S.',      r: 'Conductor Mensajería',          d: '11/2024' },
+  { c: 'Lógika Freight S.A.S.',        r: 'Conductor C2 Urbano',           d: '12/2024' },
+  { c: 'Entrega Ya S.A.S.',            r: 'Conductor Última Milla',        d: '02/2025' },
+  { c: 'Rappi Logística S.A.S.',       r: 'Conductor de Flota',            d: '01/2025' },
+  { c: 'DHL Supply Chain',             r: 'Conductor Distribución',        d: '04/2024' },
+  { c: 'Coordinadora Mercantil',       r: 'Conductor C2',                  d: '10/2024' },
+  { c: 'Envia CCC S.A.',               r: 'Conductor Carga Ligera',        d: '06/2024' },
+  { c: 'Speed Cargo S.A.S.',           r: 'Conductor Reparto',             d: '09/2024' },
+];
+
+const _distribExpPrev = [
+  { c: 'Última Milla Express',    r: 'Conductor C2',            periodo: '2021–2023', desc: 'Distribución de mercancía paletizada en zona norte de Bogotá. Rutas diarias con 15-20 entregas a clientes comerciales. Responsable de cargue, descargue y firma de guías.' },
+  { c: 'Red Logística S.A.S.',    r: 'Conductor Reparto',       periodo: '2020–2022', desc: 'Reparto urbano de electrodomésticos y mercancía a granel. Manejo de camión NQR. Control de inventario en vehículo y uso de sistema de guías digital.' },
+  { c: 'DHL Supply Chain',        r: 'Conductor Distribución',  periodo: '2019–2021', desc: 'Distribución de paquetería y carga mediana en zona centro de Bogotá. Manejo de rutas de alto tráfico y cumplimiento de ventanas de entrega.' },
+  { c: 'Coordinadora Mercantil',  r: 'Conductor C2',            periodo: '2021–2023', desc: 'Transporte de encomiendas y carga general en ruta Bogotá–Villavicencio. Gestión de manifiestos de ruta y firma de recibidos.' },
+  { c: 'TuEnvío Colombia',        r: 'Conductor Mensajería',    periodo: '2020–2022', desc: 'Entrega de paquetes e-commerce en Bogotá. Uso de app de seguimiento de entregas, gestión de cliente y recolección de devoluciones.' },
+];
+
+function _mkDistrib(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string, salaryRange: SalaryRange, stage: 'scoring' | 'prescreening' | 'entrevistas' = 'scoring', extras?: Partial<Candidate>): Candidate {
+  const hi = score >= 75; const md = score >= 58;
+  const idx = Math.max(0, parseInt(id.split('-')[1]) - 1) || 0;
+  const job = _distribJobs[idx % _distribJobs.length] ?? _distribJobs[0];
+  const prevJob = _distribExpPrev[idx % _distribExpPrev.length] ?? _distribExpPrev[0];
+  const trips = hi ? Math.round(200 + (score - 75) * 12) : md ? Math.round(90 + (score - 58) * 5) : Math.round(30 + score * 0.5);
+  const licYears = hi ? Math.max(3, Math.round((score - 75) / 5) + 3) : md ? 2 : 1;
+  const wrongCity = city === 'Barranquilla' || city === 'Cali' || city === 'Medellín';
+  const runt = _distribRunt[idx % _distribRunt.length];
+  const hasPrescreeningStage = stage === 'prescreening' || stage === 'entrevistas';
+  const pre: Candidate['prescreeningAI'] = hasPrescreeningStage ? {
+    score: Math.round(score * 0.97),
+    status: hi ? 'continua' : md ? 'continua' : 'pendiente',
+    resumen: hi
+      ? `${name} confirmó licencia C2 vigente y amplia experiencia en rutas de distribución urbana. Demuestra conocimiento detallado de procesos de cargue/descargue y manejo de guías digitales.`
+      : md
+      ? `${name} tiene experiencia básica en distribución. Confirmó disponibilidad y licencia vigente, pero con menor detalle en manejo de sistemas de guías y rutas de alto volumen.`
+      : `${name} presentó experiencia limitada en distribución formal. La disponibilidad para cargue y descargue no fue confirmada con claridad.`,
+    noNegociables: [
+      { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', score: hi ? score - 1 : md ? score - 6 : score - 15, evidencia: hi ? `Confirmó licencia C2 vigente. Relató proceso de renovación y categorías adicionales.` : md ? `Licencia C2 vigente en límite mínimo.` : `No confirmó vigencia exacta de la licencia.` } as EvalRow,
+      { label: 'Sin comparendos activos ni infracciones graves', score: hi ? score : md ? score - 4 : score - 18, evidencia: hi ? `Record limpio confirmado. Sin multas pendientes en RUNT.` : md ? `Sin comparendos activos declarados.` : `Mencionó infracción pendiente de regularización.` } as EvalRow,
+      { label: 'Disponibilidad para cargue y descargue de mercancía', score: hi ? score - 2 : md ? score - 5 : score - 12, evidencia: hi ? `Confirma disponibilidad total y ha realizado cargue/descargue en ${prevJob.c}.` : md ? `Acepta cargue y descargue con acuerdo previo.` : `Expresó dudas sobre actividades de cargue físico.` } as EvalRow,
+      { label: 'Conocimiento de rutas urbanas en Bogotá y alrededores', score: hi ? score - 1 : md ? score - 7 : score - 14, evidencia: hi ? `Conoce todas las zonas de Bogotá. Describe rutas específicas con naturalidad.` : md ? `Conoce zona norte y centro; menos familiaridad con sur.` : `Conocimiento parcial de rutas.` } as EvalRow,
+    ],
+    plusDetectados: hi
+      ? [`Manejo de app de seguimiento de entregas y sistema de guías digital`, `Experiencia en distribución e-commerce — perfil alineado con tendencia del sector`, `Actitud de servicio al cliente final evidenciada en entrevista`]
+      : md
+      ? [`Disposición para aprender plataformas de seguimiento de entregas`, `Conocimiento básico de nomenclatura urbana`]
+      : [`Disposición para trabajar en distribución si se aclaran las condiciones`],
+    senales: hi
+      ? [`Confirmar si tiene experiencia con vehículo NKR o NPR específicamente`]
+      : md
+      ? [`Validar conocimiento de rutas en zona sur de Bogotá`, `Confirmar disponibilidad para turnos de madrugada si aplica`]
+      : [`Aclarar situación de licencia y comparendos antes de avanzar`],
+    entornoPersonal: [
+      { label: 'Municipio', value: city, status: wrongCity ? 'warning' : 'ok' },
+      { label: 'Disponibilidad inicio', value: hi ? 'Inmediata' : '8 días preaviso', status: hi ? 'ok' : 'neutral' },
+      { label: 'Cargue y descargue', value: hi ? 'Sin restricciones' : 'Con condiciones', status: hi ? 'ok' : 'warning' },
+    ],
+    experienciaLaboral: [
+      { empresa: job.c, rol: job.r, periodo: hi ? '2023 – Presente' : `2022 – ${job.d}`, descripcion: hi ? `Distribución urbana con ${trips} entregas documentadas. Manejo de sistema de guías y relación directa con clientes comerciales.` : `Reparto urbano y gestión de entregas. Experiencia en cargue y descargue de mercancía.` },
+      { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
+    ],
+  } : undefined;
+  return {
+    id, name, role: 'Conductor C2 Distribución Urbana', sector: 'Logística / Última Milla',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor con licencia C2 y experiencia en distribución urbana y reparto de mercancía. Manejo de rutas de última milla, sistemas de guías y atención al cliente final.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: score >= 68,
+    ...(score >= 68 ? { currentCompany: job.c, currentRole: job.r } : { lastCompany: job.c, lastRole: job.r, lastDate: job.d }),
+    superpoder: hi ? '"Eficiencia en rutas urbanas con cero pérdidas de mercancía"' : md ? '"Conocimiento de Bogotá y cumplimiento en entregas"' : '"Disposición para trabajar en distribución"',
+    aspiration, budget: "$2'600.000", salaryRange, currentStage: stage,
+    runtVerification: {
+      cc: runt?.cc ?? '00000000',
+      totalManifiestos: trips,
+      licenseCategories: (runt?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (runt?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Camión NKR', 'Camión NPR', 'Camión NQR', 'Furgoneta de reparto'],
+      anosExperiencia: parseInt(years) || 1,
+    },
+    ...(pre ? { prescreeningAI: pre } : {}),
+    scoringAI: {
+      score: Math.round(score * 0.95),
+      status: score >= 58 ? 'continua' : 'pendiente',
+      resumen: hi
+        ? `${name} cumple todos los criterios. Licencia C2 con ${licYears}+ años, ${trips} manifiestos registrados y sin comparendos activos.`
+        : md
+        ? `${name} cumple parcialmente. Requiere validación adicional de historial y disponibilidad.`
+        : `${name} no cumple los requisitos mínimos. Brechas en licencia, historial o disponibilidad.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: hi || (md && score >= 65) },
+        { label: 'Sin comparendos activos (RUNT)', cumple: hi || (md && score >= 62) },
+        { label: 'Residencia en Bogotá o área metropolitana', cumple: !wrongCity },
+        { label: 'Expectativa salarial ≤ $2.800.000', cumple: salaryRange === 'en_rango' },
+      ],
+      logros: hi
+        ? [`${trips} manifiestos de distribución verificados — supera umbral requerido`, `Licencia C2 con ${licYears} años de expedición vigente`, 'Sin comparendos activos en RUNT']
+        : md
+        ? [`${trips} manifiestos — en límite del umbral mínimo`, 'Licencia vigente con expedición reciente']
+        : ['Historial de entregas insuficiente para el umbral mínimo'],
+      senales: hi
+        ? ['Confirmar tipo de vehículo (NPR/NKR/NQR) para asignación de flota']
+        : md
+        ? ['Validar manifiestos faltantes', 'Confirmar disponibilidad para cargue físico']
+        : [wrongCity ? `Candidato en ${city} — fuera del área de operación de Bogotá` : 'Historial insuficiente o aspiración salarial fuera de rango'],
+    },
+    veredictoEntrevista: (['entrevistas','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+      ? (score >= 78 ? 'apto' as const : score >= 62 ? 'apto_reservas' as const : 'no_apto' as const)
+      : undefined,
+    ...extras,
+  };
+}
+
+const distribCandidates: Candidate[] = [
+  _mkDistrib('d-1',  'Andrés Morales',        92, _p(36, 'men'), 'AM', '#8750F6', 'Bogotá',       '13 Años', "$2'600.000", 'en_rango',       'entrevistas'),
+  _mkDistrib('d-2',  'Iván Herrera',           88, _p(37, 'men'), 'IH', '#27BE69', 'Bogotá',       '10 Años', "$2'500.000", 'en_rango',       'entrevistas'),
+  _mkDistrib('d-3',  'Jhon Mejía',             85, _p(38, 'men'), 'JM', '#295BFF', 'Soacha',       '8 Años',  "$2'700.000", 'en_rango',       'entrevistas'),
+  _mkDistrib('d-4',  'Carlos Zambrano',        82, _p(39, 'men'), 'CZ', '#F6A350', 'Bogotá',       '7 Años',  "$2'600.000", 'en_rango',       'entrevistas'),
+  _mkDistrib('d-5',  'Mauricio Ospina',        79, _p(40, 'men'), 'MO', '#8750F6', 'Bogotá',       '6 Años',  "$2'500.000", 'en_rango',       'entrevistas'),
+  _mkDistrib('d-6',  'Javier Lozano',          76, _p(41, 'men'), 'JL', '#27BE69', 'Bogotá',       '6 Años',  "$2'600.000", 'en_rango',       'prescreening'),
+  _mkDistrib('d-7',  'Luis Molina',            71, _p(42, 'men'), 'LM', '#295BFF', 'Bogotá',       '5 Años',  "$2'400.000", 'en_rango',       'prescreening'),
+  _mkDistrib('d-8',  'Henry Vargas',           66, _p(43, 'men'), 'HV', '#F6A350', 'Bogotá',       '4 Años',  "$2'500.000", 'en_rango',       'prescreening'),
+  _mkDistrib('d-9',  'Sergio Nieto',           55, _p(44, 'men'), 'SN', '#8750F6', 'Bogotá',       '3 Años',  "$2'600.000", 'en_rango',       'prescreening'),
+  _mkDistrib('d-10', 'Freddy Peña',            48, _p(45, 'men'), 'FP', '#27BE69', 'Bogotá',       '3 Años',  "$2'400.000", 'en_rango',       'prescreening'),
+  _mkDistrib('d-11', 'Gabriel Torres',         83, _p(46, 'men'), 'GT', '#295BFF', 'Bogotá',       '7 Años',  "$2'600.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-12', 'Nicolás Parra',          79, _p(47, 'men'), 'NP', '#F6A350', 'Bogotá',       '6 Años',  "$2'500.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-13', 'Fabio Guerrero',         75, _p(48, 'men'), 'FG', '#8750F6', 'Bosa',         '5 Años',  "$2'600.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-14', 'Álvaro Pineda',          70, _p(49, 'men'), 'AP', '#27BE69', 'Bogotá',       '4 Años',  "$2'500.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-15', 'Gonzalo Rincón',         64, _p(50, 'men'), 'GR', '#295BFF', 'Bogotá',       '4 Años',  "$2'400.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-16', 'Omar Bermúdez',          57, _p(51, 'men'), 'OB', '#F65078', 'Bogotá',       '3 Años',  "$2'500.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-17', 'Hernán Lagos',           51, _p(52, 'men'), 'HL', '#27BE69', 'Cali',         '2 Años',  "$2'400.000", 'en_rango',  'prescreening'),
+  _mkDistrib('d-18', 'Mario Cárdenas', 45, _p(53, 'men'), 'MC', '#F6A350', 'Bogotá',   '2 Años', "$3'500.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkDistrib('d-19', 'Felipe Serna',   40, _p(54, 'men'), 'FS', '#295BFF', 'Medellín', '1 Año',  "$3'800.000", 'fuera_de_rango', 'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  _mkDistrib('d-20', 'Ricardo Álvarez',35, _p(55, 'men'), 'RA', '#8750F6', 'Bogotá',   '1 Año',  "$2'300.000", 'en_rango',       'prescreening', { prescreeningAI: { status: 'no_realizada', score: 0, resumen: '', noNegociables: [], plusDetectados: [], senales: [] } }),
+  // Prueba de manejo detailed candidates
+  _mkDistrib('d-21', 'Camilo Vargas',          88, _p(56, 'men'), 'CV', '#8750F6', 'Bogotá',       '9 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-22', 'Juan Espinoza',          85, _p(57, 'men'), 'JE', '#27BE69', 'Bogotá',       '8 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-23', 'Rodrigo Muñoz',          81, _p(58, 'men'), 'RM', '#F6A350', 'Soacha',       '7 Años',  "$2'700.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-24', 'Sebastián Gil',          78, _p(59, 'men'), 'SG', '#295BFF', 'Bogotá',       '7 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-25', 'Andrés Cano',            75, _p(60, 'men'), 'AC', '#F65078', 'Bogotá',       '6 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-26', 'Miguel Ríos',            72, _p(61, 'men'), 'MR', '#8750F6', 'Bogotá',       '5 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-27', 'Esteban Mora',           68, _p(62, 'men'), 'EM', '#27BE69', 'Bogotá',       '5 Años',  "$2'400.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-28', 'Jaime Castaño',          65, _p(63, 'men'), 'JC', '#F6A350', 'Bogotá',       '4 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-29', 'Samuel Pedraza',         61, _p(64, 'men'), 'SP', '#295BFF', 'Bogotá',       '4 Años',  "$2'400.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-30', 'Diego Rueda',            58, _p(65, 'men'), 'DR', '#8750F6', 'Bogotá',       '3 Años',  "$2'600.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-31', 'Cristian Pinto',         54, _p(66, 'men'), 'CP', '#27BE69', 'Chía',         '3 Años',  "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-32', 'Alejandro Rojas',        51, _p(67, 'men'), 'AR', '#F6A350', 'Bogotá',       '2 Años',  "$2'400.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-33', 'Gustavo Heredia',        47, _p(68, 'men'), 'GH', '#295BFF', 'Bogotá',       '2 Años',  "$2'300.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-34', 'Nicolás Ortega',         43, _p(69, 'men'), 'NO', '#F65078', 'Bogotá',       '1 Año',   "$2'500.000", 'en_rango',       'prueba_manejo'),
+  _mkDistrib('d-35', 'Pablo Serrano',          39, _p(70, 'men'), 'PS', '#8750F6', 'Bogotá',       '1 Año',   "$2'600.000", 'en_rango',       'prueba_manejo'),
+];
+
+// ── Prueba Psicológica: perfil conductor C2 transporte público ─────────────────
+function _psychTransp(score: number, name: string): PsychTestResult {
+  return {
+    score: Math.round(score * 0.95),
+    insight: `${name} presenta un perfil conductual con alta orientación a procedimientos y seguridad vial. Gestiona adecuadamente el estrés en ruta y opera con autonomía en contextos de alta demanda de pasajeros.`,
+    fitCards: [
+      {
+        axis: 'Seguridad vial y gestión del riesgo',
+        idealScore: 90, candidateScore: score,
+        summary: 'Alta conciencia del riesgo en operación urbana.',
+        detail: 'Respeta protocolos de seguridad, anticipa situaciones de riesgo en vía y actúa con prudencia en condiciones de tráfico adversas. Fundamental para operación de flota con alta exposición a accidentes.',
+      },
+      {
+        axis: 'Tolerancia al estrés en ruta',
+        idealScore: 82, candidateScore: score - 5,
+        summary: 'Manejo emocional estable en horarios exigentes.',
+        detail: 'Capacidad de mantener la calma ante congestión, usuarios conflictivos y condiciones climáticas adversas. El perfil demuestra resiliencia en jornadas extensas y turnos rotativos sin deterioro del rendimiento.',
+      },
+      {
+        axis: 'Orientación a procedimientos',
+        idealScore: 85, candidateScore: score - 3,
+        summary: 'Adherencia a rutas y protocolos operativos.',
+        detail: 'Cumple estrictamente con itinerarios, procedimientos de abordaje y protocolos de reporte de novedades. La adherencia a normas es crítica en operadores de transporte público concesionado.',
+      },
+      {
+        axis: 'Servicio al usuario',
+        idealScore: 75, candidateScore: score - 8,
+        summary: 'Trato respetuoso y orientación al pasajero.',
+        detail: 'Maneja situaciones de alta demanda de usuarios con cortesía y eficiencia. La orientación al servicio reduce quejas, mejora la percepción de calidad y contribuye a los indicadores del concesionario.',
+      },
+    ],
+    radarPoints: [
+      { label: 'Seg. vial',        value: score     },
+      { label: 'Estrés en ruta',   value: score - 5 },
+      { label: 'Procedimientos',   value: score - 3 },
+      { label: 'Autonomía',        value: score - 6 },
+      { label: 'Puntualidad',      value: score - 2 },
+      { label: 'Servicio usuario', value: score - 8 },
+      { label: 'Trabajo en equipo',value: score -10 },
+      { label: 'Adaptabilidad',    value: score - 4 },
+    ],
+    veredicto: [
+      { title: 'Quién es conductualmente', body: `Perfil estable, orientado a la norma y con alta tolerancia a la rutina operativa. Trabaja con disciplina en contextos altamente estructurados. Su fortaleza está en la adherencia a protocolos, no en la improvisación. La constancia y el control emocional lo hacen apto para operación de largo plazo.` },
+      { title: 'Fit con este rol', body: `El rol de conductor SITP/TM requiere exactamente las competencias más fuertes de este perfil: disciplina operativa, manejo del estrés en tráfico urbano y orientación al usuario. El eje de servicio al usuario puede afinarse en la inducción con el estándar de calidad del concesionario.` },
+    ],
+    preguntas: [
+      { tag: 'Para: Jefe de Operaciones', question: '"Cuéntame de una situación difícil en ruta — un usuario conflictivo, un cierre vial inesperado — y cómo lo manejaste."', validates: 'Tolerancia al estrés y toma de decisiones en ruta' },
+      { tag: 'Para: RRHH', question: '"¿Cómo te organizas cuando tienes turno nocturno y al día siguiente turno de madrugada? ¿Cómo cuidas tu descanso y rendimiento?"', validates: 'Autogestión y disciplina en turnos rotativos' },
+    ],
+  };
+}
+
+// ── Candidatos en EVALUACIONES (pipeline completo) ─────────────────────────────
+function _mkTranspPubEval(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string): Candidate {
+  const idx = Math.max(0, parseInt(id.split('-')[1]) - 1) || 0;
+  const job = _transpPubJobs[idx % _transpPubJobs.length] ?? _transpPubJobs[0];
+  const prevJob = _transpPubExpPrev[idx % _transpPubExpPrev.length] ?? _transpPubExpPrev[0];
+  const runt = _transpPubRunt[idx % _transpPubRunt.length];
+  const trips = Math.round(180 + (score - 75) * 10);
+  return {
+    id, name, role: 'Conductor C2 Transporte Público', sector: 'Transporte Público / SITP',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor de transporte público urbano con licencia C2 y amplia experiencia en operación de rutas SITP y TransMilenio. Servicio al usuario, cumplimiento de frecuencias y protocolos de seguridad vial.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: true, currentCompany: job.c, currentRole: job.r,
+    superpoder: '"Servicio al usuario impecable y cero incidentes en operación urbana"',
+    aspiration, budget: "$2'800.000", salaryRange: 'en_rango', currentStage: 'evaluaciones',
+    runtVerification: {
+      cc: runt?.cc ?? '00000000',
+      totalManifiestos: trips,
+      licenseCategories: (runt?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (runt?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Bus articulado TransMilenio', 'Bus padrón SITP', 'Bus urbano'],
+      anosExperiencia: parseInt(years) || 1,
+    },
+    scoringAI: {
+      score: Math.round(score * 0.95), status: 'continua',
+      resumen: `${name} cumple todos los criterios de verificación. Licencia C2 vigente, ${trips} servicios SITP registrados y sin comparendos activos en RUNT.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: true },
+        { label: 'Sin comparendos activos ni suspensiones (RUNT)', cumple: true },
+        { label: 'Disponibilidad para turnos rotativos (incluye festivos)', cumple: true },
+        { label: 'Residencia en Bogotá o municipios del área metropolitana', cumple: true },
+      ],
+      logros: [`${trips} servicios urbanos registrados en SITP — supera umbral mínimo de 100 servicios`, `Licencia C2 con más de 3 años de expedición, sin suspensiones en RUNT`, 'Cero comparendos activos ni multas pendientes'],
+      senales: ['Confirmar disponibilidad para turno nocturno si la ruta lo requiere'],
+    },
+    prescreeningAI: {
+      score: Math.round(score * 0.96), status: 'continua',
+      resumen: `${name} confirmó licencia C2 vigente y record vial limpio. Con ${years} de experiencia en transporte público, demostró conocimiento del protocolo de servicio al usuario y disponibilidad total para turnos rotativos.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', score: score - 1, evidencia: `Confirmó licencia C2 vigente. Sin suspensiones.` } as EvalRow,
+        { label: 'Sin comparendos activos ni suspensiones en RUNT', score: score, evidencia: `Declara record limpio verificado en RUNT.` } as EvalRow,
+        { label: 'Disponibilidad para turnos rotativos (incluye fines de semana y festivos)', score: score - 2, evidencia: `Confirma disponibilidad total, ha operado en turnos nocturnos y dominicales.` } as EvalRow,
+        { label: 'Experiencia mínima 2 años en transporte público o carga', score: score - 1, evidencia: `${years} de experiencia en transporte público urbano con múltiples operadores SITP.` } as EvalRow,
+      ],
+      plusDetectados: [`Conocimiento de rutas SITP en corredores norte y occidental de Bogotá`, `Manejo de articulados TransMilenio con certificación vigente`, `Actitud de servicio al usuario evidenciada durante la entrevista`],
+      senales: [`Confirmar si tiene experiencia específica en articulados o solo buses padrones`],
+      entornoPersonal: [
+        { label: 'Municipio', value: city, status: 'ok' },
+        { label: 'Disponibilidad', value: 'Inmediata', status: 'ok' },
+        { label: 'Turnos rotativos', value: 'Disponibilidad total', status: 'ok' },
+      ],
+      experienciaLaboral: [
+        { empresa: job.c, rol: job.r, periodo: '2023 – Presente', descripcion: `Operación de ruta ${job.r} con cumplimiento de frecuencias y atención al usuario. ${trips} servicios completados sin incidentes mayores.` },
+        { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
+      ],
+    },
+    psychTest: _psychTransp(score, name),
+  };
+}
+
+const transpPubEvaluaciones: Candidate[] = [
+  _mkTranspPubEval('tp-e1', 'Rodrigo Castellanos',  93, _p(16, 'men'), 'RC', '#8750F6', 'Bogotá',  '14 Años', "$2'800.000"),
+  _mkTranspPubEval('tp-e2', 'Camilo Reyes',          89, _p(17, 'men'), 'CR', '#27BE69', 'Soacha',  '11 Años', "$2'700.000"),
+  _mkTranspPubEval('tp-e3', 'Humberto Ávila',        86, _p(18, 'men'), 'HA', '#295BFF', 'Bogotá',  '9 Años',  "$2'900.000"),
+];
+
+const transpPubScoring      = transpPubCandidates.filter(c => c.currentStage === 'scoring');
+const transpPubPrescreening = transpPubCandidates.filter(c => c.currentStage === 'prescreening');
+const transpPubPruebaManejo = transpPubCandidates.filter(c => c.currentStage === 'prueba_manejo');
+const transpPubEntrevistas  = transpPubCandidates.filter(c => c.currentStage === 'entrevistas');
+
+const distribScoring      = distribCandidates.filter(c => c.currentStage === 'scoring');
+const distribPrescreening = distribCandidates.filter(c => c.currentStage === 'prescreening');
+const distribPruebaManejo = distribCandidates.filter(c => c.currentStage === 'prueba_manejo');
+const distribEntrevistas  = distribCandidates.filter(c => c.currentStage === 'entrevistas');
+
+// ── Candidatos EVALUACIONES — Distribución Urbana ───────────────────────────
+function _mkDistribEval(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string): Candidate {
+  const job     = _distribJobs[0]    ?? { c: 'DHL Express Colombia', r: 'Conductor C2 Última Milla', d: '2024' };
+  const prevJob = _distribExpPrev[0] ?? { c: 'Coordinadora S.A.', r: 'Conductor Urbano', periodo: '2020–2022', desc: 'Distribución urbana en zona norte de Bogotá.' };
+  const runt    = _distribRunt[0];
+  const trips   = Math.round(200 + (score - 75) * 12);
+  return {
+    id, name, role: 'Conductor C2 Distribución Urbana', sector: 'Logística / Última Milla',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor con licencia C2 y amplia experiencia en distribución urbana y reparto de mercancía. Experto en rutas de última milla, manejo de guías digitales y atención al cliente final.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: true, currentCompany: job.c, currentRole: job.r,
+    superpoder: '"Eficiencia en rutas urbanas con cero pérdidas de mercancía"',
+    aspiration, budget: "$2'600.000", salaryRange: 'en_rango', currentStage: 'evaluaciones',
+    runtVerification: {
+      cc: runt?.cc ?? '11111111',
+      totalManifiestos: trips,
+      licenseCategories: (runt?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (runt?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Camión NKR', 'Camión NPR', 'Camión NQR', 'Furgoneta de reparto'],
+      anosExperiencia: parseInt(years) || 1,
+    },
+    scoringAI: {
+      score: Math.round(score * 0.95), status: 'continua',
+      resumen: `${name} cumple todos los criterios. Licencia C2 vigente, ${trips} manifiestos de distribución registrados y sin comparendos activos.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: true },
+        { label: 'Sin comparendos activos (RUNT)', cumple: true },
+        { label: 'Residencia en Bogotá o área metropolitana', cumple: true },
+        { label: 'Expectativa salarial ≤ $2.800.000', cumple: true },
+      ],
+      logros: [`${trips} manifiestos de distribución verificados — supera umbral requerido`, `Licencia C2 vigente con más de 3 años de expedición`, 'Sin comparendos activos en RUNT'],
+      senales: ['Confirmar tipo de vehículo (NPR/NKR/NQR) para asignación de flota'],
+    },
+    prescreeningAI: {
+      score: Math.round(score * 0.97), status: 'continua',
+      resumen: `${name} confirmó licencia C2 vigente y amplia experiencia en rutas de distribución urbana. Demuestra conocimiento detallado de procesos de cargue/descargue y manejo de guías digitales.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', score: score - 1, evidencia: `Confirmó licencia C2 vigente. Relató proceso de renovación y categorías adicionales.` } as EvalRow,
+        { label: 'Sin comparendos activos ni infracciones graves', score: score, evidencia: `Record limpio confirmado. Sin multas pendientes en RUNT.` } as EvalRow,
+        { label: 'Disponibilidad para cargue y descargue de mercancía', score: score - 2, evidencia: `Confirma disponibilidad total y ha realizado cargue/descargue en ${prevJob.c}.` } as EvalRow,
+        { label: 'Conocimiento de rutas urbanas en Bogotá y alrededores', score: score - 1, evidencia: `Conoce todas las zonas de Bogotá. Describe rutas específicas con naturalidad.` } as EvalRow,
+      ],
+      plusDetectados: [`Manejo de app de seguimiento de entregas y sistema de guías digital`, `Experiencia en distribución e-commerce — perfil alineado con tendencia del sector`, `Actitud de servicio al cliente final evidenciada en entrevista`],
+      senales: [`Confirmar si tiene experiencia con vehículo NKR o NPR específicamente`],
+      entornoPersonal: [
+        { label: 'Municipio', value: city, status: 'ok' },
+        { label: 'Disponibilidad inicio', value: 'Inmediata', status: 'ok' },
+        { label: 'Cargue y descargue', value: 'Sin restricciones', status: 'ok' },
+      ],
+      experienciaLaboral: [
+        { empresa: job.c, rol: job.r, periodo: '2023 – Presente', descripcion: `Distribución urbana con ${trips} entregas documentadas. Manejo de sistema de guías y relación directa con clientes comerciales.` },
+        { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
+      ],
+    },
+    psychTest: _psychTransp(score, name),
+  };
+}
+
+const distribEvaluaciones: Candidate[] = [
+  _mkDistribEval('d-e1', 'Andrés Morales',     92, _p(36, 'men'), 'AM', '#8750F6', 'Bogotá', '13 Años', "$2'600.000"),
+  _mkDistribEval('d-e2', 'Iván Herrera',        88, _p(37, 'men'), 'IH', '#27BE69', 'Bogotá', '10 Años', "$2'500.000"),
+  _mkDistribEval('d-e3', 'Jhon Mejía',          85, _p(38, 'men'), 'JM', '#295BFF', 'Soacha',  '8 Años', "$2'700.000"),
+];
+
+// ── Candidatos EVALUACIONES — Carga Refrigerada (Vigía) ──────────────────────
+function _mkVigiaEval(id: string, name: string, score: number, photo: string, initials: string, color: string, city: string, years: string, aspiration: string): Candidate {
+  const job     = _vigiaJobs[0]    ?? { c: 'Alfrío S.A.', r: 'Conductor C2 Carga Refrigerada', d: '2024' };
+  const prevJob = _vigiaExpPrev[0] ?? { c: 'Colfrigos', r: 'Conductor Isotérmico', periodo: '2020–2022', desc: 'Rutas intermunicipales con cadena de frío.' };
+  const runt    = _vigiaRunt[0];
+  const trips   = Math.round(150 + (score - 75) * 8);
+  return {
+    id, name, role: 'Conductor C2 – Carga Refrigerada', sector: 'Logística / Cadena de Frío',
+    years, location: `${city}, Colombia`,
+    bio: 'Conductor con licencia C2 y amplia experiencia en transporte de carga refrigerada y cadena de frío. Manejo de rutas intermunicipales, control de temperatura y registro de manifiestos en plataforma RNDC.',
+    score, photo, avatarInitials: initials, avatarColor: color,
+    hasCurrentJob: true, currentCompany: job.c, currentRole: job.r,
+    superpoder: '"Dominio de cadena de frío con cero incidentes de temperatura en más de 150 rutas"',
+    aspiration, budget: "$3'500.000", salaryRange: 'en_rango', currentStage: 'evaluaciones',
+    runtVerification: {
+      cc: runt?.cc ?? '22222222',
+      totalManifiestos: trips,
+      licenseCategories: (runt?.cats ?? []).map(r => ({ categoria: r.c, fechaExpedicion: r.e, fechaVencimiento: r.v })),
+      tipoLicencia: 'C2',
+      vigencia: (() => { const v = (runt?.cats ?? []).find(c => c.c === 'C2')?.v; return v ? `Vigente hasta ${v.split('/').reverse().join('-')}` : 'Vigente'; })(),
+      vehiculosExperiencia: ['Tractocamión', 'Camión rígido 2 ejes', 'Furgón refrigerado (unidad de frío)'],
+      anosExperiencia: parseInt(years) || 1,
+    },
+    scoringAI: {
+      score: Math.round(score * 0.95), status: 'continua',
+      resumen: `${name} cumple todos los criterios de verificación. Licencia C2 vigente, ${trips} manifiestos de carga refrigerada registrados y sin comparendos activos en RUNT.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 2 años desde expedición', cumple: true },
+        { label: 'Sin comparendos activos ni suspensiones (RUNT)', cumple: true },
+        { label: 'Experiencia en cadena de frío o carga perecedera', cumple: true },
+        { label: 'Disponibilidad para rutas intermunicipales', cumple: true },
+      ],
+      logros: [`${trips} manifiestos de carga refrigerada registrados en RNDC`, `Licencia C2 con más de 4 años de expedición, sin suspensiones en RUNT`, 'Cero comparendos activos ni multas pendientes'],
+      senales: ['Confirmar si tiene experiencia en vehículos NPR con termógrafo instalado'],
+    },
+    prescreeningAI: {
+      score: Math.round(score * 0.97), status: 'continua',
+      resumen: `${name} confirmó disponibilidad inmediata y motivación genuina por el cargo. Demostró conocimiento práctico de rutas nacionales y manejo de carga refrigerada. Corroboró experiencia documentada.`,
+      noNegociables: [
+        { label: 'Licencia C2 vigente con mínimo 4 años desde expedición', score: score - 1, evidencia: `Confirmó licencia C2 vigente con categorías adicionales. Renovación reciente sin observaciones.` } as EvalRow,
+        { label: 'Sin comparendos activos ni infracciones de tránsito graves', score: score, evidencia: `Record limpio en RUNT confirmado. Sin multas de tránsito pendientes.` } as EvalRow,
+        { label: 'Experiencia en cadena de frío y temperatura controlada', score: score - 2, evidencia: `Reporta ${trips} manifiestos con carga refrigerada. Conoce procedimiento de alarma de temperatura.` } as EvalRow,
+        { label: 'Disponibilidad para viajes intermunicipales (pernoctar fuera)', score: score - 3, evidencia: `Confirma disponibilidad total para viajes de 2–5 días con pernocte en destino.` } as EvalRow,
+      ],
+      plusDetectados: [`${trips} manifiestos de carga refrigerada registrados — supera umbral de 100`, `Experiencia en rutas Bogotá-Cali y Bogotá-Medellín con carga de alimentos`, `Conocimiento del procedimiento de alarma y registro de temperatura en trayecto`],
+      senales: [`Confirmar si cuenta con certificación en manejo de mercancías peligrosas (si aplica)`],
+      entornoPersonal: [
+        { label: 'Municipio', value: city, status: 'ok' },
+        { label: 'Disponibilidad inicio', value: 'Inmediata', status: 'ok' },
+        { label: 'Viajes intermunicipales', value: 'Disponibilidad total', status: 'ok' },
+      ],
+      experienciaLaboral: [
+        { empresa: job.c, rol: job.r, periodo: '2023 – Presente', descripcion: `Transporte de carga refrigerada con ${trips} manifiestos registrados en RNDC. Rutas intermunicipales con control de temperatura y entrega certificada.` },
+        { empresa: prevJob.c, rol: prevJob.r, periodo: prevJob.periodo, descripcion: prevJob.desc },
+      ],
+    },
+    psychTest: _psychTransp(score, name),
+  };
+}
+
+const vigiaEvaluaciones: Candidate[] = [
+  _mkVigiaEval('v-e1', 'Carlos Jiménez',         91, _p(1, 'men'), 'CJ', '#8750F6', 'Bogotá',   '12 Años', "$3'200.000"),
+  _mkVigiaEval('v-e2', 'Hernando Vargas',         88, _p(2, 'men'), 'HV', '#27BE69', 'Cota',     '10 Años', "$3'000.000"),
+  _mkVigiaEval('v-e3', 'Luis Fernando Moreno',    85, _p(3, 'men'), 'LM', '#295BFF', 'Mosquera', '8 Años',  "$3'400.000"),
+];
+
+export const MOCK_INITIAL_STATUSES: Record<string, Partial<Record<string, Record<string, string>>>> = {
+  'mock-vigia': {
+    scoring: {
+      'mvc-11': 'continua', 'mvc-12': 'continua', 'mvc-13': 'continua',
+      'mvc-14': 'por_validar', 'mvc-15': 'por_validar',
+      'mvc-16': 'continua', 'mvc-17': 'continua', 'mvc-18': 'continua', 'mvc-19': 'continua', 'mvc-20': 'continua',
+    },
+    prescreening: {
+      'mvc-6': 'continua', 'mvc-7': 'continua',
+      'mvc-8': 'por_validar', 'mvc-9': 'por_validar', 'mvc-10': 'descartado',
+      'mvc-16': 'por_validar', 'mvc-17': 'por_validar', 'mvc-18': 'por_validar', 'mvc-19': 'por_validar', 'mvc-20': 'por_validar',
+    },
+    evaluaciones: {
+      'v-e1': 'continua',
+      'v-e2': 'continua',
+      'v-e3': 'por_validar',
+    },
+  },
+  'mock-transp-pub': {
+    scoring: {
+      'tp-11': 'continua', 'tp-12': 'continua', 'tp-13': 'continua',
+      'tp-14': 'por_validar', 'tp-15': 'por_validar', 'tp-16': 'por_validar',
+      'tp-17': 'continua', 'tp-18': 'continua', 'tp-19': 'continua', 'tp-20': 'continua',
+    },
+    prescreening: {
+      'tp-6': 'continua', 'tp-7': 'continua',
+      'tp-8': 'por_validar', 'tp-9': 'por_validar', 'tp-10': 'descartado',
+      'tp-18': 'por_validar', 'tp-19': 'por_validar', 'tp-20': 'por_validar',
+    },
+    evaluaciones: {
+      'tp-e1': 'continua',
+      'tp-e2': 'continua',
+      'tp-e3': 'por_validar',
+    },
+  },
+  'mock-distrib': {
+    scoring: {
+      'd-11': 'continua', 'd-12': 'continua', 'd-13': 'continua',
+      'd-14': 'por_validar', 'd-15': 'por_validar', 'd-16': 'por_validar',
+      'd-17': 'continua', 'd-18': 'continua', 'd-19': 'continua', 'd-20': 'continua',
+    },
+    prescreening: {
+      'd-6': 'continua', 'd-7': 'continua',
+      'd-8': 'por_validar', 'd-9': 'por_validar', 'd-10': 'descartado',
+      'd-18': 'por_validar', 'd-19': 'por_validar', 'd-20': 'por_validar',
+    },
+    evaluaciones: {
+      'd-e1': 'continua',
+      'd-e2': 'continua',
+      'd-e3': 'por_validar',
+    },
+  },
+};
 
 export const MOCK_VACANTES: Vacante[] = [
-  { id: 'mock-vigia', jobId: 'mock-vigia', status: 'activa', title: 'Conductor C2 Carga Refrigerada', area: ['Operaciones', 'Logística'], priority: 'alta', progressLabel: 'Verificación', progressPct: 10, total: 20, activos: 20, fecha: '03 May 2026' },
+  { id: 'mock-transp-pub', jobId: 'mock-transp-pub', status: 'activa',   title: 'Conductor C2 Transporte Público', area: ['Operaciones', 'Transporte Público'], priority: 'alta',  progressLabel: 'Validación RUNT', progressPct: 25, total: 20, activos: 20, fecha: '28 Abr 2026' },
+  { id: 'mock-vigia',      jobId: 'mock-vigia',      status: 'activa',   title: 'Conductor C2 Carga Refrigerada',  area: ['Operaciones', 'Logística'],           priority: 'alta',  progressLabel: 'Validación RUNT', progressPct: 10, total: 20, activos: 20, fecha: '03 May 2026' },
+  { id: 'mock-distrib',    jobId: 'mock-distrib',    status: 'activa',   title: 'Conductor C2 Distribución Urbana', area: ['Logística', 'Última Milla'],          priority: 'media', progressLabel: 'Pre-entrevista',  progressPct: 5,  total: 20, activos: 20, fecha: '15 May 2026' },
 ];
 
 export const MOCK_DESCRIPTIONS: Record<string, string> = {
+  'mock-transp-pub':
+    'Conductor de bus urbano con licencia C2 para operador de transporte público de Bogotá (SITP/TransMilenio). Responsable de la operación segura y puntual de la ruta asignada, atención al usuario, cumplimiento de frecuencias y reporte de novedades en plataforma del concesionario. Turnos rotativos domingo a domingo con compensatorio. Sede: patios de operación en Bogotá.',
   'mock-vigia':
-    'Conductor de carga seca refrigerada y congelada para Transportes Vigía S.A.S. — empresa con 47 años de experiencia en el sector. Responsable del transporte seguro y puntual de mercancía a nivel nacional, conservando la cadena de frío, cumpliendo protocolos HSEQ, BASC y SARLAFT, y gestionando documentación de despacho y cumplidos en cada viaje. Jornada domingo a domingo, turnos de 12 horas. Sede base: vía Cota-Siberia.',
+    'Conductor de carga seca refrigerada y congelada para Demo Transportes S.A.S. — empresa con 47 años de experiencia en el sector. Responsable del transporte seguro y puntual de mercancía a nivel nacional, conservando la cadena de frío, cumpliendo protocolos HSEQ, BASC y SARLAFT, y gestionando documentación de despacho y cumplidos en cada viaje. Jornada domingo a domingo, turnos de 12 horas. Sede base: vía Cota-Siberia.',
+  'mock-distrib':
+    'Conductor de distribución urbana y última milla con licencia C2 para operador logístico. Responsable de la entrega de mercancía a clientes comerciales en Bogotá y área metropolitana, cargue y descargue de productos, uso de sistema de guías digital y cumplimiento de ventanas de entrega. Ruta diaria fija, horario desde las 6:00 AM.',
 };
 
 export function getMockPipelineStages(jobId: string): PipelineStage[] {
   const s = (id: string, label: string, badge: string, status: StageStatus, count: number, isAI: boolean): PipelineStage =>
     ({ id, label, stageBadge: badge, status, candidateCount: count, isAI, route: `/pipeline/${jobId}/${id}` });
+
+  // ── Pipeline estándar Transporte & Logística ──
+  // counts: scoring, pre, manejo, ent, psicotech, conocimiento, estudios, fin
+  const transpPipeline = (scoring: number, pre: number, manejo: number, ent: number, psicotech: number, conoc: number, est = 0, fin = 0) => [
+    s('scoring',              'Verificación (RUNT/RNDC)', 'Verificación',     scoring > 0   ? (pre > 0       ? 'completed'    : 'in_progress') : 'not_started', scoring,   true),
+    s('prescreening',         'Pre-entrevista IA',         'Pre-entrevista',   pre > 0       ? (manejo > 0    ? 'completed'    : 'in_progress') : 'not_started', pre,       true),
+    s('prueba_manejo',        'Prueba de manejo',           'Prueba manejo',    manejo > 0    ? (ent > 0       ? 'completed'    : 'in_progress') : 'not_started', manejo,    false),
+    s('entrevistas',          'Entrevista',                 'Entrevista',       ent > 0       ? (psicotech > 0 ? 'completed'    : 'in_progress') : 'not_started', ent,       false),
+    s('evaluaciones',         'Prueba Psicométrica',        'Psicométrica',     psicotech > 0 ? (conoc > 0     ? 'completed'    : 'in_progress') : 'not_started', psicotech, false),
+    { ...s('prueba_conocimiento', 'Prueba de conocimiento', 'Conocimiento', conoc > 0 ? (est > 0 ? 'completed' : 'in_progress') : 'not_started', conoc, false), forceEnabled: true },
+    s('estudios',             'Validaciones',               'Validaciones',     est > 0       ? (fin > 0       ? 'in_progress'  : 'in_progress') : 'not_started', est,       false),
+    s('finalistas',           'Aprobados',                  'Aprobados',        fin > 0       ? 'in_progress'                                   : 'not_started', fin,       false),
+  ];
+
   switch (jobId) {
-    case 'mock-vigia':
+    case 'mock-transp-pub': return transpPipeline(0, 100, 60, 50, 35, 28, 20, 15);
+    case 'mock-vigia':      return transpPipeline(0, 100, 60, 50, 35, 28, 20, 15);
+    case 'mock-distrib':    return transpPipeline(0, 100, 60, 50, 35, 28, 20, 15);
+    case 'mock-recep':
       return [
-               s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',  'in_progress', 10, true),
-               s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'in_progress',  5, true),
-               s('evaluaciones', 'Prueba de manejo',         'Prueba manejo', 'in_progress',  5, false),
-               s('finalistas',   'Finalistas',               'Finalistas',    'not_started',  0, false),
-             ];
+        s('scoring',      'Scoring IA',        'Scoring',       'in_progress', 15, true),
+        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'not_started',       0, true),
+        s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started',       0, false),
+        s('evaluaciones', 'Pruebas',            'Pruebas',       'not_started',       0, false),
+        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
+      ];
+    case 'mock-bodega':
+      return [
+        s('scoring',      'Scoring IA',        'Scoring',       'completed',   20, true),
+        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'in_progress', 15, true),
+        s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started',       0, false),
+        s('evaluaciones', 'Pruebas',            'Pruebas',       'not_started',       0, false),
+        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
+      ];
+    case 'mock-th':
+      return [
+        s('scoring',      'Scoring IA',        'Scoring',       'completed',   30, true),
+        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   18, true),
+        s('entrevistas',  'Entrevistas',        'Entrevistas',   'in_progress', 10, false),
+        s('evaluaciones', 'Pruebas',            'Pruebas',       'not_started',       0, false),
+        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
+      ];
+    case 'mock-finanzas':
+      return [
+        s('scoring',      'Scoring IA',        'Scoring',       'completed',   30, true),
+        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   20, true),
+        s('entrevistas',  'Entrevistas',        'Entrevistas',   'completed',   12, false),
+        s('evaluaciones', 'Pruebas',            'Pruebas',       'in_progress',  6, false),
+        s('finalistas',   'Finalistas',         'Finalistas',    'not_started',       0, false),
+      ];
+    case 'mock-ventas':
     default:
       return [
-        s('scoring',      'Verificación (RUNT/RNDC)', 'Verificación',   'not_started', 0, true),
-        s('prescreening', 'Pre-entrevista IA',        'Pre screening', 'not_started', 0, true),
-        s('entrevistas',  'Entrevistas',              'Entrevistas',   'not_started', 0, false),
-        s('evaluaciones', 'Evaluaciones',             'Evaluaciones',  'not_started', 0, false),
-        s('finalistas',   'Finalistas',               'Finalistas',    'not_started', 0, false),
+        s('scoring',      'Scoring IA',        'Scoring',       'completed',   50, true),
+        s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'completed',   30, true),
+        s('entrevistas',  'Entrevistas',        'Entrevistas',   'completed',   25, false),
+        s('evaluaciones', 'Pruebas',            'Pruebas',       'completed',   10, false),
+        s('finalistas',   'Finalistas',         'Finalistas',    'in_progress',  3, false),
       ];
   }
+  const comfStages = getComfandiPipelineStages(jobId);
+  if (comfStages) return comfStages;
+  return [
+    s('scoring',      'Scoring IA',        'Scoring',       'not_started', 0, true),
+    s('prescreening', 'Pre-entrevista IA',  'Pre screening', 'not_started', 0, true),
+    s('entrevistas',  'Entrevistas',        'Entrevistas',   'not_started', 0, false),
+    s('evaluaciones', 'Pruebas',            'Pruebas',       'not_started', 0, false),
+    s('finalistas',   'Finalistas',         'Finalistas',    'not_started', 0, false),
+  ];
 }
 
-const vigiaScoring       = vigiaCandidates.filter(c => c.currentStage === 'scoring');
-const vigiaPrescreening  = vigiaCandidates.filter(c => c.currentStage === 'prescreening');
-const vigiaEvaluaciones  = vigiaCandidates.filter(c => c.currentStage === 'evaluaciones');
+// ── PRIMA psychometric test — 2 permutations for transport candidates ──────────
+// Applied randomly (odd/even index) to any bulk candidate at evaluaciones+ stage.
+function _primaTranspA(name: string, score: number): PsychTestResult {
+  const s = Math.min(96, Math.max(55, score));
+  return {
+    score: s,
+    insight: `${name} presenta un perfil conductual altamente compatible con operación de transporte de carga. Demuestra equilibrio entre autonomía en ruta y adherencia a normas operativas. Alta tolerancia al estrés y disciplina en contextos de larga jornada.`,
+    fitCards: [
+      {
+        axis: 'Seguridad vial y gestión del riesgo',
+        idealScore: 90, candidateScore: s,
+        summary: 'Alta conciencia del riesgo en operación de carga.',
+        detail: 'Anticipa riesgos en vía, respeta protocolos de carga y descarga, y actúa con prudencia ante condiciones adversas. Perfil ideal para operación de camiones C2 en zonas urbanas e intermunicipales.',
+      },
+      {
+        axis: 'Tolerancia al estrés y jornadas extensas',
+        idealScore: 85, candidateScore: Math.max(50, s - 4),
+        summary: 'Estabilidad emocional en turnos rotativos.',
+        detail: 'Mantiene rendimiento constante en jornadas nocturnas y turnos extendidos. Gestiona la presión de cumplir tiempos de entrega sin comprometer la seguridad vial.',
+      },
+      {
+        axis: 'Autonomía en ruta',
+        idealScore: 80, candidateScore: Math.max(50, s - 2),
+        summary: 'Toma de decisiones en campo sin supervisión constante.',
+        detail: 'Opera con independencia ante imprevistos como desvíos, averías menores o cambios de ruta. Comunica novedades de forma oportuna al despachador.',
+      },
+      {
+        axis: 'Orientación a procedimientos',
+        idealScore: 88, candidateScore: Math.max(50, s - 6),
+        summary: 'Adherencia a protocolos de carga, RNDC y documentación.',
+        detail: 'Cumple rigurosamente con el diligenciamiento de manifiestos, guías de transporte y registros RNDC. Crucial para evitar sanciones y garantizar trazabilidad de la carga.',
+      },
+    ],
+    radarPoints: [
+      { label: 'Seg. vial',        value: s      },
+      { label: 'Estrés/jornada',   value: s - 4  },
+      { label: 'Autonomía',        value: s - 2  },
+      { label: 'Procedimientos',   value: s - 6  },
+      { label: 'Comunicación',     value: s - 8  },
+      { label: 'Responsabilidad',  value: s - 1  },
+      { label: 'Adaptabilidad',    value: s - 5  },
+    ],
+    veredicto: [
+      { title: 'Quién es conductualmente', body: `Perfil equilibrado entre autonomía y cumplimiento normativo. Trabaja con disciplina en contextos de alta exigencia operativa y larga jornada. Su fortaleza está en la autorregulación emocional y la toma de decisiones en campo sin supervisión constante.` },
+      { title: 'Fit con este rol', body: `El perfil de conductor C2 de carga requiere exactamente las competencias más sólidas de este candidato: tolerancia al estrés en ruta, adherencia a procedimientos de carga/descarga y autonomía operativa. Se recomienda avanzar en el proceso.` },
+    ],
+    preguntas: [
+      { tag: 'Para: Jefe de Operaciones', question: '"Cuéntame una situación donde tuviste un imprevisto en ruta — avería, cierre vial o cambio de cliente — y cómo lo resolviste sin perder el tiempo de entrega."', validates: 'Autonomía y gestión de imprevistos en campo' },
+      { tag: 'Para: RRHH', question: '"¿Cómo manejas las jornadas nocturnas y los cambios de turno? ¿Qué rutinas tienes para mantener el rendimiento y la seguridad?"', validates: 'Autogestión y disciplina en turnos rotativos' },
+    ],
+  };
+}
+
+function _primaTranspB(name: string, score: number): PsychTestResult {
+  const s = Math.min(72, Math.max(38, score));
+  return {
+    score: s,
+    insight: `${name} presenta un perfil con competencias operativas básicas para el cargo, aunque con algunas áreas de desarrollo en gestión del estrés y adherencia a procedimientos documentales. Se sugieren validaciones adicionales antes de vinculación.`,
+    fitCards: [
+      {
+        axis: 'Seguridad vial y gestión del riesgo',
+        idealScore: 90, candidateScore: Math.max(40, s - 8),
+        summary: 'Conciencia de riesgo en desarrollo.',
+        detail: 'Conoce los protocolos de seguridad pero muestra tendencia a saltarse pasos en situaciones de presión. Se recomienda reforzar durante la inducción el protocolo ante emergencias viales y carga especial.',
+      },
+      {
+        axis: 'Tolerancia al estrés y jornadas extensas',
+        idealScore: 85, candidateScore: Math.max(35, s - 12),
+        summary: 'Estrés moderado en condiciones de alta demanda.',
+        detail: 'Puede mostrar deterioro del rendimiento en jornadas nocturnas prolongadas o ante acumulación de presión. Se recomienda evaluar rotación de turno y acompañamiento inicial en campo.',
+      },
+      {
+        axis: 'Autonomía en ruta',
+        idealScore: 80, candidateScore: Math.max(40, s - 5),
+        summary: 'Requiere acompañamiento en decisiones complejas.',
+        detail: 'En situaciones de imprevistos tiende a buscar validación externa antes de actuar. Mejora con experiencia acumulada en rutas conocidas, pero puede ser una limitante en rutas nuevas o condiciones adversas.',
+      },
+      {
+        axis: 'Orientación a procedimientos',
+        idealScore: 88, candidateScore: Math.max(35, s - 15),
+        summary: 'Áreas de mejora en documentación RNDC.',
+        detail: 'El diligenciamiento de manifiestos y registros digitales presenta inconsistencias bajo presión. Se sugiere acompañamiento durante el primer mes y verificación de registros RNDC en la fase de inducción.',
+      },
+    ],
+    radarPoints: [
+      { label: 'Seg. vial',        value: Math.max(40, s - 8)  },
+      { label: 'Estrés/jornada',   value: Math.max(35, s - 12) },
+      { label: 'Autonomía',        value: Math.max(40, s - 5)  },
+      { label: 'Procedimientos',   value: Math.max(35, s - 15) },
+      { label: 'Comunicación',     value: Math.max(40, s - 10) },
+      { label: 'Responsabilidad',  value: Math.max(40, s - 7)  },
+      { label: 'Adaptabilidad',    value: Math.max(38, s - 9)  },
+    ],
+    veredicto: [
+      { title: 'Quién es conductualmente', body: `Perfil con potencial operativo básico pero con limitaciones en la gestión del estrés y la autonomía ante situaciones complejas. Requiere estructura, acompañamiento inicial y un entorno con rutas definidas para rendir de forma consistente.` },
+      { title: 'Fit con este rol', body: `El cargo exige un nivel de autonomía y tolerancia al estrés superior al que evidencia el candidato en esta evaluación. Se recomienda avanzar solo si el equipo puede brindar acompañamiento durante los primeros meses de operación o si el cargo tiene rutas fijas y supervisión cercana.` },
+    ],
+    preguntas: [
+      { tag: 'Para: Jefe de Operaciones', question: '"¿Cómo actúas cuando la ruta asignada tiene cambios de último minuto o el vehículo presenta una falla menor? Dame un ejemplo concreto."', validates: 'Capacidad de respuesta autónoma ante imprevistos' },
+      { tag: 'Para: RRHH', question: '"Cuéntame un momento en que sentiste mucha presión en el trabajo. ¿Qué pasó y cómo lo manejaste?"', validates: 'Gestión del estrés y resiliencia operativa' },
+    ],
+  };
+}
+
+// ── Bulk candidate generator for funnel demo ──────────────────────────────────
+// Generates lightweight placeholder candidates to fill realistic funnel counts.
+const _BULK_NAMES: [string, string][] = [
+  ['Alexánder','Rincón'],['Bernardo','Silva'],['Camilo','Pedraza'],['Daniel','Quiroga'],
+  ['Edgardo','Fuentes'],['Fernando','Cano'],['Gerardo','Pinto'],['Harold','Castro'],
+  ['Ignacio','Toro'],['Jorge','Melo'],['Kevin','Buitrago'],['Leonardo','Crespo'],
+  ['Manuel','Acosta'],['Norberto','Zapata'],['Orlando','Mora'],['Patricio','Jiménez'],
+  ['Quintín','Ospino'],['Rafael','Delgado'],['Saúl','Arango'],['Teodoro','Palomino'],
+  ['Ubaldo','Escobar'],['Víctor','Trujillo'],['William','Padilla'],['Yamid','Cifuentes'],
+  ['Zairo','Becerra'],['Álvaro','Quintana'],['Édgar','Solano'],['Félix','Mejías'],
+  ['Gonzalo','Vega'],['Horacio','Sandoval'],['Ismael','Restrepo'],['Javier','Guevara'],
+  ['Laureano','Navarro'],['Lorenzo','Pacheco'],['Misael','Oñate'],['Néstor','Ibáñez'],
+  ['Óscar','Aguilar'],['Pedro','Blanco'],['Rubén','Tafur'],['Simón','Camargo'],
+  ['Tomás','Alvarado'],['Uriel','Benítez'],['Walter','Romero'],['Yamil','Flórez'],
+  ['Abel','Murillo'],['Benito','Salazar'],['Celio','Torres'],['Dario','Peñaloza'],
+  ['Efraín','Londoño'],['Franklin','Ramírez'],['Gilberto','Villamizar'],['Hernando','Ávila'],
+  ['Iván','Guerrero'],['Julio','Holguín'],['Kléber','Fandiño'],['Lorenzo','Serrano'],
+  ['Manuel','Pinzón'],['Nomar','Gutiérrez'],['Octavio','Franco'],['Porfirio','Castaño'],
+  ['Rodolfo','Parra'],['Santiago','Peña'],['Tadeo','García'],['Uriel','Cárdenas'],
+  ['Valentín','Suárez'],['Wilson','Lozano'],['Xavier','Gil'],['Yonier','Rojas'],
+  ['Alfonso','Forero'],['Brayan','Muñoz'],['César','Vargas'],['David','Mendoza'],
+  ['Emilio','Morales'],['Fernando','Torres'],['Guillermo','López'],['Hernán','Cruz'],
+];
+const _BULK_COMPANIES = [
+  'TCC S.A.','Coordinadora Mercantil','Servientrega','Deprisa','Envía Colvanes',
+  'Suppla S.A.','DHL Express Colombia','FedEx Colombia','Logi-Trans S.A.S','Grupo Nutresa Logística',
+  'Alimentos Polar Colombia','Bavaria S.A.','Quala S.A.','Alpina Productos Alimenticios','Postobón S.A.',
+  'Almacenes Éxito','Carrefour Colombia','Makro Supermayorista','Olimpica S.A.','Colanta Ltda',
+];
+const _BULK_ROLES_PREV = [
+  'Conductor C2 Urbano','Conductor de Reparto','Operador de Flota','Conductor Ruta Local',
+  'Conductor Distribución','Chofer Entrega Última Milla','Operador Logístico','Conductor Mensajería',
+  'Conductor Tractocamión','Auxiliar de Transporte','Conductor Camión Rígido','Conductor de Carga',
+];
+const _BULK_LOGROS = [
+  ['Cero accidentes en 3 años consecutivos de operación','Reconocimiento por puntualidad en entregas'],
+  ['Más de 500 manifiestos completados sin novedad','Licencia C2 vigente sin infracciones'],
+  ['Operación en zona AMVA y Bogotá D.C. sin incidentes','Conocimiento de rutas intermunicipales'],
+  ['Manejo de mercancía perecedera y carga especial','Turno rotativo sin ausentismo en último año'],
+  ['Capacitación en conducción defensiva certificada','Gestión de documentos de transporte sin errores'],
+];
+const _BULK_SIGNALS_NEG = [
+  ['Sin antecedentes verificados aún','Aspiración salarial pendiente de confirmación'],
+  ['Dirección de residencia fuera del área preferida'],
+  ['Vehículo propio no confirmado'],
+  ['Referencias laborales pendientes de contacto'],
+];
+
+// ── Knowledge test mock generator ─────────────────────────────────────────────
+const KNOWLEDGE_QUESTIONS_BANK: Omit<KnowledgeQuestion, 'id' | 'isCorrect' | 'selectedAnswer'>[] = [
+  // Normativa de Tránsito
+  { category: 'Normativa de Tránsito', question: '¿Cuál es la velocidad máxima permitida en zona urbana para vehículos de carga?', correctAnswer: '50 km/h' },
+  { category: 'Normativa de Tránsito', question: '¿Cada cuánto tiempo debe renovarse la licencia de conducción C2?', correctAnswer: 'Cada 3 años' },
+  { category: 'Normativa de Tránsito', question: '¿Qué indica la doble línea amarilla continua en la calzada?', correctAnswer: 'Prohibición de adelantar en ambos sentidos' },
+  { category: 'Normativa de Tránsito', question: '¿Cuál es el tiempo máximo de conducción continua para conductores profesionales de carga?', correctAnswer: '4 horas continuas, luego 30 min de descanso' },
+  { category: 'Normativa de Tránsito', question: '¿Cuál es el límite de peso máximo en eje trasero simple de un C2?', correctAnswer: '11,5 toneladas' },
+  { category: 'Normativa de Tránsito', question: '¿Qué documento ampara legalmente el transporte de carga por carretera?', correctAnswer: 'Manifiesto de carga' },
+  { category: 'Normativa de Tránsito', question: '¿Cuál es la distancia mínima de seguimiento recomendada a 80 km/h?', correctAnswer: '80 metros' },
+  // Mantenimiento Preventivo
+  { category: 'Mantenimiento Preventivo', question: '¿Con qué frecuencia deben revisarse los frenos en un vehículo de carga?', correctAnswer: 'Cada 20,000 km o mensualmente' },
+  { category: 'Mantenimiento Preventivo', question: '¿Cuál es la profundidad mínima de la banda de rodadura permitida?', correctAnswer: '1,6 mm' },
+  { category: 'Mantenimiento Preventivo', question: '¿Cuál es el rango de temperatura de operación normal del motor diésel?', correctAnswer: 'Entre 80 °C y 95 °C' },
+  { category: 'Mantenimiento Preventivo', question: '¿Cada cuánto se recomienda el cambio de aceite en un camión diésel de trabajo pesado?', correctAnswer: 'Cada 15,000 km o cada 6 meses' },
+  { category: 'Mantenimiento Preventivo', question: '¿Qué revela el humo negro en el escape de un motor diésel?', correctAnswer: 'Combustión incompleta; exceso de combustible o filtro de aire obstruido' },
+  // Seguridad Vial y Manejo Defensivo
+  { category: 'Seguridad Vial', question: '¿Cuál es la técnica correcta de frenado en descensos prolongados con carga?', correctAnswer: 'Freno motor con cambios reducidos, evitando frenos de servicio continuos' },
+  { category: 'Seguridad Vial', question: '¿Qué hacer si el vehículo derrapa en piso mojado?', correctAnswer: 'Soltar el acelerador y girar suavemente hacia el lado del derrape' },
+  { category: 'Seguridad Vial', question: '¿Cuándo se deben usar las luces de emergencia (hazard)?', correctAnswer: 'Solo ante detención forzada o avería en la vía' },
+  { category: 'Seguridad Vial', question: '¿Cuál es la distancia de visibilidad requerida antes de un cruce ferroviario?', correctAnswer: '100 metros en cada dirección' },
+  { category: 'Seguridad Vial', question: '¿Qué precaución adicional requiere el radio de giro de un C2 frente a vehículos livianos?', correctAnswer: 'Mayor espacio lateral y verificar ángulo muerto antes de girar' },
+  // Carga y Transporte
+  { category: 'Carga y Transporte', question: '¿Cuál es el método de amarre recomendado para cargas deslizables?', correctAnswer: 'Amarre directo con correas tensoras y topes antideslizantes' },
+  { category: 'Carga y Transporte', question: '¿Cuántos centímetros puede sobresalir una carga por la parte trasera sin señalización especial?', correctAnswer: '30 cm' },
+  { category: 'Carga y Transporte', question: '¿Cuál es la temperatura de cadena de frío para transporte de alimentos frescos?', correctAnswer: 'Entre 0 °C y 4 °C' },
+  { category: 'Carga y Transporte', question: '¿Qué debe verificar el conductor antes de iniciar una ruta con carga nueva?', correctAnswer: 'Aseguramiento de la carga, límites de peso, documentos y ruta autorizada' },
+  // Mercancías Peligrosas y Emergencias
+  { category: 'Mercancías Peligrosas', question: '¿A qué clase de peligrosidad pertenece el combustible diésel según la normativa IMDG?', correctAnswer: 'Clase 3 — Líquidos inflamables' },
+  { category: 'Mercancías Peligrosas', question: '¿Cuál es el número de emergencia para derrames de sustancias peligrosas en Colombia?', correctAnswer: 'CISPROQUIM: 01 8000 916012' },
+  { category: 'Mercancías Peligrosas', question: '¿Qué acción NO se debe realizar ante un incendio en la cabina del vehículo?', correctAnswer: 'No abrir el capó sin equipo adecuado; evacuar primero y llamar a emergencias' },
+  { category: 'Mercancías Peligrosas', question: '¿Qué información debe contener la tarjeta de emergencia de mercancías peligrosas?', correctAnswer: 'Nombre de la sustancia, riesgos, acciones de emergencia y teléfono de contacto' },
+];
+
+const WRONG_ANSWERS: Record<string, string> = {
+  '¿Cuál es el límite de peso máximo en eje trasero simple de un C2?': '8 toneladas',
+  '¿Cuál es la distancia de visibilidad requerida antes de un cruce ferroviario?': '50 metros en cada dirección',
+  '¿A qué clase de peligrosidad pertenece el combustible diésel según la normativa IMDG?': 'Clase 4 — Sólidos inflamables',
+  '¿Qué acción NO se debe realizar ante un incendio en la cabina del vehículo?': 'Apagar el motor inmediatamente',
+  '¿Cuántos centímetros puede sobresalir una carga por la parte trasera sin señalización especial?': '50 cm',
+};
+
+function _mkKnowledgeTest(name: string, hiScore: boolean, seed: number): KnowledgeTestResult {
+  const wrongIndices = hiScore
+    ? [4, 15, 21, 22]   // 4 wrong → 21/25 = 84
+    : [4, 7, 10, 13, 15, 18, 21, 22, 23];  // 9 wrong → 16/25 = 64
+
+  const questions: KnowledgeQuestion[] = KNOWLEDGE_QUESTIONS_BANK.map((q, i) => {
+    const isWrong = wrongIndices.includes(i);
+    const wrongAns = WRONG_ANSWERS[q.question] ?? 'No lo sabe con certeza';
+    return {
+      id: i + 1,
+      category: q.category,
+      question: q.question,
+      selectedAnswer: isWrong ? wrongAns : q.correctAnswer,
+      correctAnswer: q.correctAnswer,
+      isCorrect: !isWrong,
+    };
+  });
+
+  const correct = questions.filter((q) => q.isCorrect).length;
+  const incorrect = questions.length - correct;
+  const score = Math.round((correct / questions.length) * 100);
+
+  const hiObs = `${name} demostró buen dominio de normativa de tránsito y mantenimiento preventivo. Presentó dificultades puntuales en límites de peso por eje y visibilidad ferroviaria. Desempeño consistente con perfil de conductor experimentado. Se recomienda avanzar.`;
+  const loObs = `${name} mostró conocimientos básicos de normativa vial, pero presenta vacíos significativos en mantenimiento preventivo, carga segura y manejo de mercancías peligrosas. Se recomienda capacitación antes de asignar rutas de alto riesgo. Avanzar con reservas.`;
+
+  const day = 10 + (seed % 15);
+  const month = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'][seed % 6];
+
+  return {
+    score,
+    totalQuestions: questions.length,
+    correct,
+    incorrect,
+    observations: hiScore ? hiObs : loObs,
+    externalUrl: 'https://forms.gle/mock-prueba-conocimiento',
+    completedAt: `${day} ${month} 2026 — 09:${String(30 + (seed % 20)).padStart(2, '0')} a.m.`,
+    questions,
+  };
+}
+
+function _mkBulk(
+  prefix: string,
+  role: string,
+  sector: string,
+  stage: PipelineStageKey,
+  count: number,
+  startIdx: number,
+  scoreRange: [number, number],
+): Candidate[] {
+  const colors = ['#8750F6','#27BE69','#295BFF','#F6A350','#F65078'];
+  const cities = ['Bogotá','Soacha','Bogotá','Bogotá','Chía','Bogotá','Funza','Mosquera','Madrid','Cota','Bogotá','Bogotá'];
+  const salaries: [string, SalaryRange][] = [
+    ["$2'400.000",'en_rango'],["$2'500.000",'en_rango'],["$2'600.000",'en_rango'],
+    ["$2'700.000",'en_rango'],["$2'800.000",'en_rango'],["$3'600.000",'fuera_de_rango'],
+  ];
+  const hasPre = stage !== 'scoring';
+  return Array.from({ length: count }, (_, i) => {
+    const idx = startIdx + i;
+    const nameArr = _BULK_NAMES[idx % _BULK_NAMES.length] ?? ['Candidato','Demo'];
+    const name = `${nameArr[0]} ${nameArr[1]}`;
+    const score = Math.max(22, Math.min(97, scoreRange[0] + Math.round(Math.abs(Math.sin(idx * 4.7 + 2.3)) * (scoreRange[1] - scoreRange[0]))));
+    const color = colors[idx % colors.length]!;
+    const city  = cities[idx % cities.length]!;
+    const yrs   = 2 + (idx % 9);
+    const [salary, salaryRange] = salaries[idx % salaries.length]!;
+    const initials = `${nameArr[0]?.[0] ?? 'C'}${nameArr[1]?.[0] ?? 'C'}`;
+    const company   = _BULK_COMPANIES[idx % _BULK_COMPANIES.length]!;
+    const prevRole  = _BULK_ROLES_PREV[idx % _BULK_ROLES_PREV.length]!;
+    const prevYrs   = Math.max(1, yrs - 1);
+    // Scenario: high scores continue, mid scores are pending, low scores discarded
+    const preStatus: 'continua' | 'pendiente' | 'rechazado' =
+      score >= 68 ? 'continua' : score >= 45 ? 'pendiente' : 'rechazado';
+    const logros  = _BULK_LOGROS[idx % _BULK_LOGROS.length] ?? [];
+    const senales = score < 60 ? (_BULK_SIGNALS_NEG[idx % _BULK_SIGNALS_NEG.length] ?? []) : [];
+    const hasCV   = idx % 4 !== 0; // ~25% built via WhatsApp, no uploaded résumé
+
+    // ── Prescreening progress ──────────────────────────────────────────────
+    const _failReasons = [
+      'La experiencia en conducción C2 requerida no fue identificada en la HV.',
+      'La HV no acredita licencia de conducción categoría C2 vigente.',
+      'Los años de experiencia no alcanzan el mínimo requerido para el cargo.',
+      'La HV no refleja tiempo mínimo en el último cargo registrado.',
+    ];
+    // All prescreening candidates have a HV (PDF upload or WhatsApp builder) — no 'not_available'
+    const _rvStatus: ResumeValidationStatus =
+      preStatus === 'rechazado' ? (idx % 5 === 0 ? 'pending' : 'failed')
+      : preStatus === 'pendiente' ? (idx % 12 === 0 ? 'pending' : 'passed')
+      : 'passed';
+    const _matchedCriteria =
+      _rvStatus === 'passed' ? (preStatus === 'continua' ? 5 + (idx % 2) : 5)
+      : _rvStatus === 'failed' ? (1 + (idx % 3))
+      : undefined;
+    const _waStatus: WaPrescreeningStatus =
+      _rvStatus !== 'passed' ? 'not_started'
+      : preStatus === 'continua' ? 'completed'
+      : (idx % 8 === 0 ? 'not_started' : 'in_progress');
+    const _prescreeningProgress: PrescreeningProgress = {
+      resumeValidation: {
+        status: _rvStatus,
+        validatedAt: (_rvStatus === 'passed' || _rvStatus === 'failed') ? '2026-06-15' : undefined,
+        matchedCriteria: _matchedCriteria,
+        totalCriteria: _rvStatus !== 'not_available' ? 6 : undefined,
+        failReason: _rvStatus === 'failed' ? (_failReasons[idx % _failReasons.length] ?? _failReasons[0]) : undefined,
+      },
+      whatsappPrescreening: { status: _waStatus },
+    };
+
+    return {
+      id: `${prefix}-blk-${idx}`,
+      name,
+      role,
+      sector,
+      years: `${yrs} Año${yrs !== 1 ? 's' : ''}`,
+      location: `${city}, Colombia`,
+      bio: `Conductor profesional con licencia C2 vigente. ${yrs} años de experiencia en operación de vehículos de carga, incluyendo ${prevYrs} años en ${company} como ${prevRole}.`,
+      score,
+      photo: _p(idx % 35, 'men'),
+      avatarInitials: initials,
+      avatarColor: color,
+      hasCurrentJob: score >= 58,
+      currentCompany: score >= 58 ? company : undefined,
+      currentRole:    score >= 58 ? prevRole : undefined,
+      lastCompany:    score < 58 ? company : undefined,
+      lastRole:       score < 58 ? prevRole : undefined,
+      superpoder: `"${yrs} años conduciendo C2 — cero incidentes"`,
+      aspiration: salary,
+      budget:     salary,
+      salaryRange,
+      currentStage: stage,
+      hasCV,
+      prescreeningProgress: _prescreeningProgress,
+      // Prueba Psicométrica: 2 PRIMA permutations, applied for evaluaciones+ stages
+      psychTest: (['evaluaciones','prueba_conocimiento','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+        ? (idx % 2 === 0 ? _primaTranspA(name, score) : _primaTranspB(name, score))
+        : undefined,
+      // Prueba de conocimiento: applied for prueba_conocimiento+ stages
+      knowledgeTest: (['prueba_conocimiento','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+        ? _mkKnowledgeTest(name, score >= 65, idx)
+        : undefined,
+      // Interview verdict: score-based for entrevistas/evaluaciones/estudios/finalistas
+      // ≥78 = Apto (top ~8), 62–77 = Apto con reservas (~7), <62 = No apto (rest)
+      veredictoEntrevista: (['entrevistas','evaluaciones','prueba_conocimiento','estudios','finalistas'] as PipelineStageKey[]).includes(stage)
+        ? (score >= 78 ? 'apto' : score >= 62 ? 'apto_reservas' : 'no_apto')
+        : undefined,
+      // Low-score candidates failed a non-negotiable before RUNT — no verification available
+      runtVerification: score >= 48 ? {
+        cc: `${10000000 + idx * 137}`,
+        totalManifiestos: yrs * 80 + (idx % 50),
+        licenseCategories: [
+          { categoria: 'C2', fechaExpedicion: `${2026 - yrs - 2}-03-15`, fechaVencimiento: `${2028 + (idx % 3)}-03-14` },
+        ],
+        tipoLicencia: 'C2',
+        vigencia: `Vigente hasta ${2028 + (idx % 3)}-03-14`,
+        vehiculosExperiencia: ['Camión rígido 2 ejes', 'Tractocamión'],
+        anosExperiencia: yrs,
+      } : undefined,
+      scoringAI: {
+        score: Math.round(score * 0.96),
+        status: score >= 60 ? 'continua' : score >= 40 ? 'pendiente' : 'rechazado',
+        resumen: score >= 68
+          ? `${name} demuestra un perfil sólido para el cargo. Licencia C2 vigente con ${yrs} años de experiencia comprobada en empresas como ${company}. Sin infracciones reportadas.`
+          : score >= 45
+          ? `${name} cumple los requisitos mínimos. Experiencia de ${yrs} años aunque en proceso de actualización de documentos. Se recomienda validar referencias.`
+          : `${name} no supera los criterios mínimos del perfil. Experiencia insuficiente o aspiración salarial fuera de rango. Se sugiere descartar en esta convocatoria.`,
+        noNegociables: [],
+        logros,
+        senales,
+      },
+      prescreeningAI: hasPre ? {
+        score: Math.round(score * 0.97),
+        status: preStatus,
+        resumen: preStatus === 'continua'
+          ? `${name} confirmó licencia C2 vigente y ${yrs} años de experiencia en distribución de carga. Disponibilidad inmediata y residencia en zona de cobertura. Perfil alineado con los requisitos del cargo.`
+          : preStatus === 'pendiente'
+          ? `${name} cumple parcialmente los requisitos. Se validaron ${yrs} años de experiencia, pero algunos aspectos como vehículo propio y zona de residencia requieren confirmación adicional.`
+          : `${name} no cumple los criterios mínimos del proceso. Experiencia inferior a lo requerido o aspiración salarial fuera del rango establecido para el cargo.`,
+        noNegociables: [],
+        plusDetectados: preStatus === 'continua' ? logros.slice(0,1) : [],
+        senales: preStatus !== 'continua' ? senales : [],
+        entornoPersonal: [
+          { label: 'Disponibilidad', value: 'Inmediata', status: 'ok' },
+          { label: 'Residencia', value: city, status: city === 'Barranquilla' || city === 'Cali' || city === 'Medellín' ? 'warning' : 'ok' },
+          { label: 'Años de exp.', value: `${yrs} años`, status: yrs >= 2 ? 'ok' : 'warning' },
+        ],
+        experienciaLaboral: [
+          { empresa: company, rol: prevRole, periodo: `${2026 - yrs} – Presente`, descripcion: `Operación de rutas de carga con ${company}. ${yrs * 80}+ manifiestos completados.` },
+        ],
+      } : undefined,
+    };
+  });
+}
+
+// ── Bulk arrays per vacancy ────────────────────────────────────────────────────
+// Funnel: prescreening=100, prueba_manejo=60, entrevistas=30, evaluaciones=40, prueba_conocimiento=35, estudios=20, finalistas=15
+// Each vacancy uses a different startIdx offset (0, 500, 1000) to avoid name collisions.
+
+// ── Bulk arrays per vacancy (non-overlapping, indexed to avoid name collisions) ─
+// Funnel target: prescreening≈100, prueba_manejo≈60, entrevistas≈30, evaluaciones≈40, prueba_conocimiento≈35, estudios≈20, finalistas≈15
+// Funnel: pre=100, manejo=60, entrev=50(5+45bulk), eval=35(3+32bulk), conoc=28(28bulk), est=20, fin=15
+// StartIdx blocks (non-overlapping): d=0..270, tp=500..772, vc=1000..1272
+
+// mock-distrib (detailed: pre=15, pm=15, eval=3, entrev=5)
+const distribBulkPre   = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','prescreening',        85,   0, [28,94]);
+const distribBulkPM    = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','prueba_manejo',        45,  85, [42,92]);
+const distribBulkEntrev= _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','entrevistas',          45, 130, [56,94]);
+const distribBulkEval  = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','evaluaciones',         32, 175, [58,93]);
+const distribBulkConoc = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','prueba_conocimiento',  28, 207, [62,93]);
+const distribBulkEstud = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','estudios',             20, 235, [65,94]);
+const distribBulkFinal = _mkBulk('d','Conductor C2 Distribución Urbana','Logística / Última Milla','finalistas',           15, 255, [72,96]);
+
+// mock-transp-pub (detailed: pre=15, pm=13, eval=3, entrev=5)
+const tpBulkPre    = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','prescreening',       85, 500, [28,94]);
+const tpBulkPM     = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','prueba_manejo',       47, 585, [42,92]);
+const tpBulkEntrev = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','entrevistas',         45, 632, [56,94]);
+const tpBulkEval   = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','evaluaciones',        32, 677, [58,93]);
+const tpBulkConoc  = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','prueba_conocimiento', 28, 709, [62,93]);
+const tpBulkEstud  = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','estudios',            20, 737, [65,94]);
+const tpBulkFinal  = _mkBulk('tp','Conductor C2 Transporte Público','Transporte Público','finalistas',          15, 757, [72,96]);
+
+// mock-vigia (detailed: pre=15, pm=13, eval=3, entrev=5)
+const vigiaBulkPre    = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','prescreening',       85,1000, [28,94]);
+const vigiaBulkPM     = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','prueba_manejo',       47,1085, [42,92]);
+const vigiaBulkEntrev = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','entrevistas',         45,1132, [56,94]);
+const vigiaBulkEval   = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','evaluaciones',        32,1177, [58,93]);
+const vigiaBulkConoc  = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','prueba_conocimiento', 28,1209, [62,93]);
+const vigiaBulkEstud  = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','estudios',            20,1237, [65,94]);
+const vigiaBulkFinal  = _mkBulk('vc','Conductor C2 Carga Refrigerada','Logística / Cadena de Frío','finalistas',          15,1257, [72,96]);
 
 export const mockCandidatesByStage: Record<string, Partial<Record<string, Candidate[]>>> = {
-  'mock-vigia': { scoring: vigiaScoring, prescreening: vigiaPrescreening, evaluaciones: vigiaEvaluaciones },
-};
-
-export const mockCandidatesById: Record<string, Candidate> = vigiaCandidates
-  .reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
-
-// Pre-seeded statuses shown by default in each stage list (candidateId → status)
-export const MOCK_INITIAL_STATUSES: Record<string, Partial<Record<string, Record<string, string>>>> = {
-  'mock-vigia': {
-    scoring: {
-      'mvc-11': 'continua',    // 81 — verde
-      'mvc-12': 'continua',    // 78 — verde
-      'mvc-13': 'continua',    // 74 — verde
-      'mvc-14': 'por_validar', // 70 — amarillo
-      'mvc-15': 'por_validar', // 63 — amarillo
-      'mvc-16': 'por_validar', // 55 — amarillo
-      'mvc-17': 'descartado',  // 50 — rojo
-      'mvc-18': 'descartado',  // 45 — rojo
-      'mvc-19': 'descartado',  // 40 — rojo
-      'mvc-20': 'descartado',  // 34 — rojo
-    },
-    prescreening: {
-      'mvc-6':  'continua',    // 76 — verde
-      'mvc-7':  'continua',    // 72 — verde
-      'mvc-8':  'por_validar', // 66 — amarillo
-      'mvc-9':  'por_validar', // 54 — amarillo
-      'mvc-10': 'descartado',  // 49 — rojo
-    },
+  // Each stage contains ONLY its own candidates — no cross-stage duplicates.
+  // Funnel: pre=100, manejo=60, entrev=50, eval=35, conoc=28, est=20, fin=15
+  'mock-transp-pub': {
+    scoring:              [...transpPubScoring],
+    prescreening:         [...transpPubPrescreening, ...tpBulkPre],          // 100
+    prueba_manejo:        [...transpPubPruebaManejo, ...tpBulkPM],           //  60
+    entrevistas:          [...transpPubEntrevistas, ...tpBulkEntrev],        //  50 (5+45)
+    evaluaciones:         [...transpPubEvaluaciones, ...tpBulkEval],         //  35 (3+32)
+    prueba_conocimiento:  [...tpBulkConoc],                                  //  28
+    estudios:             [...tpBulkEstud],                                  //  20
+    finalistas:           [...transpPubEntrevistas.slice(0,2), ...tpBulkFinal], // 15
   },
+  'mock-vigia': {
+    scoring:              [...vigiaScoring],
+    prescreening:         [...vigiaPrescreening, ...vigiaBulkPre],           // 100
+    prueba_manejo:        [...vigiaPruebaManejo, ...vigiaBulkPM],            //  60
+    entrevistas:          [...vigiaEntrevistas, ...vigiaBulkEntrev],         //  50 (5+45)
+    evaluaciones:         [...vigiaEvaluaciones, ...vigiaBulkEval],          //  35 (3+32)
+    prueba_conocimiento:  [...vigiaBulkConoc],                               //  28
+    estudios:             [...vigiaBulkEstud],                               //  20
+    finalistas:           [...vigiaEntrevistas.slice(0,2), ...vigiaBulkFinal], // 15
+  },
+  'mock-distrib': {
+    scoring:              [...distribScoring],
+    prescreening:         [...distribPrescreening, ...distribBulkPre],       // 100
+    prueba_manejo:        [...distribPruebaManejo, ...distribBulkPM],        //  60
+    entrevistas:          [...distribEntrevistas, ...distribBulkEntrev],     //  50 (5+45)
+    evaluaciones:         [...distribEvaluaciones, ...distribBulkEval],      //  35 (3+32)
+    prueba_conocimiento:  [...distribBulkConoc],                             //  28
+    estudios:             [...distribBulkEstud],                             //  20
+    finalistas:           [...distribEntrevistas.slice(0,2), ...distribBulkFinal], // 15
+  },
+  'mock-recep':    { scoring: recepCandidates },
+  'mock-bodega':   { scoring: [...bodegaPreCandidates, ...bodegaScoreOnly], prescreening: bodegaPreCandidates },
+  'mock-th':       { scoring: [...thEntrevistasCandidates, ...thPreCandidates, ...thScoreOnly], prescreening: [...thEntrevistasCandidates, ...thPreCandidates], entrevistas: thEntrevistasCandidates },
+  'mock-finanzas': { scoring: [...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates, ...finScoreOnly], prescreening: [...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates], entrevistas: [...finEvalCandidates, ...finEntrevistasCandidates], evaluaciones: finEvalCandidates },
+  'mock-ventas':   { scoring: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates, ...venScoreOnly], prescreening: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates], entrevistas: [...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates], evaluaciones: [...venFinalistCandidates, ...venEvalCandidates] },
+  ...COMFANDI_CANDIDATES_BY_STAGE,
 };
+
+export const mockCandidatesById: Record<string, Candidate> = [
+  ...transpPubEvaluaciones,
+  ...transpPubCandidates,
+  ...vigiaEvaluaciones,
+  ...vigiaCandidates,
+  ...distribEvaluaciones,
+  ...distribCandidates,
+  // Bulk arrays (all three vacancies, all stages)
+  ...distribBulkPre, ...distribBulkPM, ...distribBulkEntrev, ...distribBulkEval, ...distribBulkConoc, ...distribBulkEstud, ...distribBulkFinal,
+  ...tpBulkPre, ...tpBulkPM, ...tpBulkEntrev, ...tpBulkEval, ...tpBulkConoc, ...tpBulkEstud, ...tpBulkFinal,
+  ...vigiaBulkPre, ...vigiaBulkPM, ...vigiaBulkEntrev, ...vigiaBulkEval, ...vigiaBulkConoc, ...vigiaBulkEstud, ...vigiaBulkFinal,
+  ...recepCandidates,
+  ...bodegaPreCandidates, ...bodegaScoreOnly,
+  ...thEntrevistasCandidates, ...thPreCandidates, ...thScoreOnly,
+  ...finEvalCandidates, ...finEntrevistasCandidates, ...finPreCandidates, ...finScoreOnly,
+  ...venFinalistCandidates, ...venEvalCandidates, ...venEntrevistasCandidates, ...venPreCandidates, ...venScoreOnly,
+  ...COMFANDI_ALL_CANDIDATES,
+].reduce<Record<string, Candidate>>((acc, c) => { acc[c.id] = c; return acc; }, {});
 
 // ─── Mock Tech Test Feedback ──────────────────────────────────────────────────
 // Pre-seeded into localStorage by useCandidateDetail when candidate is loaded.
 export const mockTechFeedback: Record<string, TechTestFeedback> = {
+  // Transporte Público — Prueba técnica: simulación de manejo defensivo + conocimiento de rutas
+  'tp-e1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 4, iniciativa: 5 }, destacados: 'Demostró dominio completo del protocolo de manejo defensivo en simulación de ruta urbana. Identificó correctamente los puntos críticos de la ruta 508 (Usme - Portal Sur) y respondió adecuadamente ante escenarios de cierre vial y accidente en vía.', senalAlerta: 'El tiempo de respuesta ante pasajero conflictivo fue ligeramente lento; reforzar protocolo de atención en la inducción operativa.', recomendacion: 'avanzar', files: [] },
+  'tp-e2': { ratings: { dominio: 5, resolucion: 4, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Excelente conocimiento de nomenclatura vial y rutas troncales. Manejó el caso de desvío por obra de forma autónoma y comunicó al despachador correctamente. Actitud de servicio al usuario destacable en la simulación de abordaje masivo.', senalAlerta: 'La gestión documental de novedades de fin de turno tomó más tiempo del estándar; agilizar con práctica en el sistema del concesionario.', recomendacion: 'avanzar', files: [] },
+  'tp-e3': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 4, iniciativa: 4 }, destacados: 'Buen dominio del protocolo de seguridad vial y manejo bajo condiciones de lluvia. Conocimiento correcto del sistema de recaudo electrónico y gestión de errores de tarjeta.', senalAlerta: 'Menor fluidez en el manejo del caso de avería mecánica en ruta; reforzar procedimiento de reporte y señalización de emergencia.', recomendacion: 'avanzar_reservas', files: [] },
+  // Distribución Urbana — Prueba técnica: simulación de ruta de entrega y manejo de guías
+  'd-e1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 5, iniciativa: 4 }, destacados: 'Planificó la ruta de 28 entregas en menos de 5 minutos optimizando por zonas geográficas. Manejó sin problemas el sistema de guías digitales y resolvió el caso de devolución con procedimiento correcto. Actitud de servicio al cliente final muy destacada.', senalAlerta: 'El tiempo de cargue del vehículo fue ligeramente superior al estándar; reforzar dinámica de cargue organizado en la inducción.', recomendacion: 'avanzar', files: [] },
+  'd-e2': { ratings: { dominio: 5, resolucion: 4, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Buen dominio de la aplicación de seguimiento de entregas. Resolvió el caso de cliente ausente siguiendo el protocolo correcto (foto de fachada + notificación). Conocimiento claro de las zonas de Bogotá norte y oriente.', senalAlerta: 'La gestión del caso de mercancía dañada fue reactiva; reforzar protocolo de evidencia fotográfica inmediata.', recomendacion: 'avanzar', files: [] },
+  'd-e3': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 4, iniciativa: 4 }, destacados: 'Buena orientación espacial y conocimiento de rutas en zona sur. Manejo correcto del proceso de liquidación de guías al final del turno. Disposición para el trabajo físico de cargue y descargue sin reservas.', senalAlerta: 'Menor fluidez en el manejo del caso de reclamación en destino; reforzar protocolo de atención al receptor en la inducción.', recomendacion: 'avanzar_reservas', files: [] },
+  // Carga Refrigerada (Vigía) — Prueba técnica: simulación de ruta intermunicipal con cadena de frío
+  'v-e1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 4, iniciativa: 5 }, destacados: 'Identificó correctamente la alarma de temperatura del termógrafo en el caso simulado y siguió el protocolo: parada, verificación de la unidad refrigerante, contacto con despacho y registro en bitácora. Conocimiento preciso de la ruta Bogotá–Cali con puntos de control de temperatura en Buga y Palmira.', senalAlerta: 'El tiempo de decisión ante la alarma fue correcto pero podría ser más rápido; practicar protocolo hasta hacerlo automático.', recomendacion: 'avanzar', files: [] },
+  'v-e2': { ratings: { dominio: 5, resolucion: 4, calidad: 5, comunicacion: 4, iniciativa: 4 }, destacados: 'Muy buen dominio del proceso de precooling del furgón antes de cargue. Resolvió el caso de fallo de la unidad refrigerante en ruta con decisión correcta (estación de servicio certificada más cercana). Registro en RNDC sin errores en la simulación.', senalAlerta: 'La comunicación con el cliente receptor en el caso de retraso fue básica; reforzar el protocolo de notificación proactiva.', recomendacion: 'avanzar', files: [] },
+  'v-e3': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 4, iniciativa: 4 }, destacados: 'Buen conocimiento de la cadena de frío para alimentos perecederos. Manejo correcto del proceso de entrega con verificación de temperatura en recepción y firma de remisión refrigerada. Conoce las diferencias de manejo entre NPR con motor auxiliar y sin motor auxiliar.', senalAlerta: 'El caso de documentación de novedad en RNDC fue menos ágil; reforzar el proceso de registro digital durante la inducción.', recomendacion: 'avanzar_reservas', files: [] },
   // Finanzas: 3 de 6 respondieron la prueba técnica
   'mfin-1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 4, iniciativa: 4 }, destacados: 'Dominio profundo de análisis financiero y costeo industrial. Resolvió el caso de presupuesto con precisión metodológica, identificando desviaciones clave y proponiendo acciones correctivas concretas con sustento cuantitativo.', senalAlerta: 'El análisis de escenarios fue conservador; en situaciones de alta incertidumbre podría limitarse a lo conocido.', recomendacion: 'avanzar', files: [] },
   'mfin-2': { ratings: { dominio: 5, resolucion: 4, calidad: 5, comunicacion: 5, iniciativa: 4 }, destacados: 'Solución financiera muy bien estructurada con foco en eficiencia operativa. Identificó con precisión los centros de costo con mayor desviación y propuso reducciones con fundamento técnico claro.', senalAlerta: 'La presentación del caso tomó más tiempo del estipulado; reforzar agilidad bajo presión de tiempo.', recomendacion: 'avanzar', files: [] },
@@ -2397,18 +3640,42 @@ export const mockTechFeedback: Record<string, TechTestFeedback> = {
   'mv-3': { ratings: { dominio: 4, resolucion: 5, calidad: 5, comunicacion: 4, iniciativa: 5 }, destacados: 'Estrategia comercial sólida con diferenciación clara por segmento. Usó datos del mercado para fundamentar proyecciones y propuso indicadores de seguimiento muy prácticos.', senalAlerta: 'La estrategia de pricing fue conservadora; validar disposición para negociaciones de margen en cuentas estratégicas.', recomendacion: 'avanzar', files: [] },
   'mv-4': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Buen manejo del caso comercial con foco en relacionamiento y fidelización. Identificó oportunidades de cross-selling con sustento cuantitativo relevante.', senalAlerta: 'La propuesta de expansión a nuevos territorios carece de análisis de viabilidad financiera.', recomendacion: 'avanzar_reservas', files: [] },
   'mv-5': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 4, iniciativa: 4 }, destacados: 'Estrategia comercial coherente con el mercado objetivo. Buen análisis de competencia y propuesta de valor diferenciada para el segmento industrial de distribución.', senalAlerta: 'La gestión de equipo propuesta es reactiva; desarrollar metodología más estructurada de coaching y seguimiento.', recomendacion: 'avanzar_reservas', files: [] },
+  // Comfandi GCA — Prueba técnica: simulación de gestión de convenios
+  'gca-1': { ratings: { dominio: 5, resolucion: 5, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Resolvió el caso de gestión de convenio con precisión metodológica: identificó los puntos de bloqueo en la legalización, propuso ajustes al proceso administrativo y diseñó un plan de seguimiento con indicadores de cumplimiento por etapa. La simulación de visita comercial fue convincente y orientada al resultado.', senalAlerta: 'El análisis de indicadores de cartera complementaria fue básico; reforzar en la inducción.', recomendacion: 'avanzar', files: [] },
+  'gca-2': { ratings: { dominio: 5, resolucion: 4, calidad: 5, comunicacion: 4, iniciativa: 5 }, destacados: 'Caso de gestión de convenio resuelto con foco en la profundización del portafolio. Identificó oportunidades de cross-selling dentro del mismo convenio y propuso indicadores de actividad comercial por empresa vinculada. Simulación de prospección empresarial muy bien estructurada.', senalAlerta: 'La gestión administrativa del proceso de legalización fue menos detallada que la parte comercial.', recomendacion: 'avanzar', files: [] },
+  'gca-3': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Análisis del caso de convenio correcto con buena comprensión del proceso administrativo. Propuesta de seguimiento de indicadores coherente con los objetivos del cargo. Comunicación clara y estructurada en la presentación del caso.', senalAlerta: 'La estrategia de profundización del portafolio fue reactiva más que proactiva; reforzar en la inducción.', recomendacion: 'avanzar_reservas', files: [] },
+  // Comfandi GCV — Prueba técnica: simulación de atención de crédito
+  'gcv-1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 4, iniciativa: 4 }, destacados: 'Caso de atención de crédito resuelto con alta precisión: identificó el perfil de riesgo del cliente simulado, propuso la línea de crédito más adecuada y diseñó el plan de seguimiento desde originación hasta desembolso. La simulación de entrevista de venta consultiva fue especialmente destacable por el enfoque en calidad de vida del afiliado.', senalAlerta: 'La gestión de objeciones relacionadas con tasas de interés fue estándar; profundizar en argumentación diferenciada de Comfandi.', recomendacion: 'avanzar', files: [] },
+  'gcv-2': { ratings: { dominio: 4, resolucion: 5, calidad: 4, comunicacion: 5, iniciativa: 4 }, destacados: 'Caso de crédito de consumo resuelto con foco en el seguimiento activo de la base de preaprobados. Análisis de priorización de leads claro y estrategia de conversión bien fundamentada. Simulación de llamada de seguimiento muy bien ejecutada.', senalAlerta: 'El manejo del caso de cartera vencida fue básico; reforzar en la inducción con el equipo de cobranzas.', recomendacion: 'avanzar', files: [] },
+  'gcv-3': { ratings: { dominio: 4, resolucion: 4, calidad: 4, comunicacion: 4, iniciativa: 4 }, destacados: 'Caso de gestión de portafolio de crédito correctamente resuelto. Comprensión clara del proceso de originación y seguimiento. Orientación al cliente demostrada en la simulación de atención en punto de venta.', senalAlerta: 'La estrategia de fidelización del cliente post-desembolso fue poco desarrollada; reforzar en la inducción.', recomendacion: 'avanzar_reservas', files: [] },
+  // Comfandi CB — Prueba técnica: diseño de intervención comportamental
+  'cb-1': { ratings: { dominio: 5, resolucion: 5, calidad: 5, comunicacion: 5, iniciativa: 4 }, destacados: 'Diseño de intervención comportamental excepcional: aplicó metodología EAST con precisión, definió indicadores de impacto medibles y elaboró un plan de transferencia metodológica a orientadores con métricas de adopción. El reporte técnico presentado combinó rigor científico con lenguaje accionable para audiencias no académicas.', senalAlerta: 'El plan de comunicación de resultados a gerencia podría ser más ejecutivo y menos académico.', recomendacion: 'avanzar', files: [] },
+  'cb-2': { ratings: { dominio: 5, resolucion: 4, calidad: 5, comunicacion: 5, iniciativa: 5 }, destacados: 'Caso de diagnóstico comportamental resuelto con enfoque mixto muy bien articulado. Aplicación de EAST en el diseño del piloto y propuesta de medición de impacto con grupo de control. La comunicación del diagnóstico para audiencias operativas fue especialmente clara y accionable.', senalAlerta: 'El análisis cuantitativo del caso podría incluir más indicadores de impacto a nivel individual.', recomendacion: 'avanzar', files: [] },
+  'cb-3': { ratings: { dominio: 4, resolucion: 5, calidad: 4, comunicacion: 4, iniciativa: 5 }, destacados: 'Intervención comportamental bien diseñada con metodología EAST aplicada correctamente. Análisis de datos con R sólido y propuesta de indicadores de seguimiento práctica. El plan de transferencia metodológica al equipo de orientadores fue detallado y viable.', senalAlerta: 'El reporte técnico fue más denso que ejecutivo; reforzar la síntesis para audiencias gerenciales.', recomendacion: 'avanzar_reservas', files: [] },
 };
 
 // ─── Mock Finalist Cards ──────────────────────────────────────────────────────
-function _toFinCard(c: Candidate, fid: string, salary: string, modalidad: string, addSkills: {label:string;score:number}[], fitC: string, pruebaTecnica: boolean) {
+function _toFinCard(c: Candidate, fid: string, salary: string, modalidad: string, addSkills: {label:string;score:number}[], fitC: string, pruebaTecnica: boolean, noNeg?: string[]) {
   const nn = (c.prescreeningAI?.noNegociables ?? []) as Array<{label:string;score:number}>;
-  return { id: fid, name: c.name, role: c.role, years: c.years, sector: c.sector, salary, salaryRange: c.salaryRange, score: c.score, avatarInitials: c.avatarInitials, photo: c.photo, location: c.location, modalidad, coreSkills: nn.slice(0,3).map(n=>({label:n.label,score:n.score})), additionalSkills: addSkills, fitCultural: fitC, pruebaTecnicaCompletada: pruebaTecnica };
+  return { id: fid, name: c.name, role: c.role, years: c.years, sector: c.sector, salary, salaryRange: c.salaryRange, score: c.score, avatarInitials: c.avatarInitials, photo: c.photo, location: c.location, modalidad, coreSkills: nn.slice(0,3).map(n=>({label:n.label,score:n.score})), additionalSkills: addSkills, fitCultural: fitC, pruebaTecnicaCompletada: pruebaTecnica, noNeg };
 }
 export const mockFinalistCards: Record<string, ReturnType<typeof _toFinCard>[]> = {
   'mock-ventas': [
     _toFinCard(venFinalistCandidates[0], 'f1', "$14M / $15M", 'Remoto', [{label:'Gestión de CRM',score:94},{label:'Negociación B2B',score:91},{label:'Liderazgo de equipo',score:88}], 'Orientación al resultado, liderazgo inspirador y visión de largo plazo.', true),
     _toFinCard(venFinalistCandidates[1], 'f2', "$14M / $15M", 'Remoto', [{label:'Apertura de mercados',score:90},{label:'Cuentas clave',score:92},{label:'Estrategia comercial',score:87}], 'Relacionamiento estratégico, alta energía comercial y foco en el cliente.', true),
     _toFinCard(venFinalistCandidates[2], 'f3', "$13M / $14M", 'Remoto', [{label:'Pipeline management',score:88},{label:'Negociación',score:89},{label:'Desarrollo de equipo',score:85}], 'Disciplina comercial, constancia y construcción de equipos de alto rendimiento.', true),
+  ],
+  'mock-comf-gca': [
+    _toFinCard(gcaEval[0], 'gca-f1', "$5'800.000 / $6'200.000", 'Presencial Medellín', [{label:'Gestión de convenios',score:92},{label:'Profundización de portafolio',score:89},{label:'Relacionamiento empresarial',score:91}], 'Disciplina comercial, visión de largo plazo y orientación a la calidad de la relación con la empresa vinculada.', true, ['Mín. VIII semestre en Administración, Mercadeo o tecnólogo afín', 'Mínimo 3 años en crédito de libranza en sector financiero o cooperativo', 'Experiencia en vinculación y legalización de convenios empresariales', 'Disponibilidad presencial en Medellín con visitas externas']),
+    _toFinCard(gcaEval[1], 'gca-f2', "$6'000.000 / $6'200.000", 'Presencial Medellín', [{label:'Prospección empresarial',score:88},{label:'Legalización de convenios',score:90},{label:'Indicadores de colocación',score:87}], 'Orientación al resultado, capacidad de apertura de cuentas nuevas y gestión proactiva del portafolio.', true, ['Mín. VIII semestre en Administración, Mercadeo o tecnólogo afín', 'Mínimo 3 años en crédito de libranza en sector financiero o cooperativo', 'Experiencia en vinculación y legalización de convenios empresariales', 'Disponibilidad presencial en Medellín con visitas externas']),
+  ],
+  'mock-comf-gcv': [
+    _toFinCard(gcvEval[0], 'gcv-f1', "$3'800.000 / $4'000.000", 'Presencial Cali', [{label:'Venta consultiva de crédito',score:94},{label:'Gestión de preaprobados',score:91},{label:'NPS y fidelización',score:90}], 'Enfoque en calidad de vida del afiliado, disciplina en seguimiento de portafolio y alto NPS personal.', true, ['Título técnico en carreras administrativas, mercadeo o afines', 'Mínimo 1 año en comercialización de intangibles (cualquier sector)', 'Orientación al logro con seguimiento proactivo de metas de colocación', 'Disponibilidad presencial en Cali (oficina y punto de venta)']),
+    _toFinCard(gcvEval[1], 'gcv-f2', "$4'000.000 / $4'200.000", 'Presencial Cali', [{label:'Seguimiento de cartera',score:88},{label:'Originación hasta desembolso',score:90},{label:'Cumplimiento de metas',score:87}], 'Orientación al resultado, dominio del ciclo completo de crédito y relacionamiento proactivo con clientes.', true, ['Título técnico en carreras administrativas, mercadeo o afines', 'Mínimo 1 año en comercialización de intangibles (cualquier sector)', 'Orientación al logro con seguimiento proactivo de metas de colocación', 'Disponibilidad presencial en Cali (oficina y punto de venta)']),
+  ],
+  'mock-comf-cb': [
+    _toFinCard(cbEval[0], 'cb-f1', "$5'800.000 / $6'200.000", 'Presencial Bogotá', [{label:'Metodología EAST/3B',score:95},{label:'Análisis estadístico (R)',score:93},{label:'Transferencia metodológica',score:91}], 'Rigor científico excepcional, comunicación efectiva de hallazgos y capacidad probada de transferencia metodológica a equipos operativos.', true, ['Profesional en ciencias sociales, administrativas, económicas o afines', 'Más de 3 años en investigación aplicada y experimentación en campo', 'Dominio de metodologías EAST, 3B o COMB en diseño de intervenciones', 'Disponibilidad presencial en Bogotá o municipios aledaños']),
+    _toFinCard(cbEval[1], 'cb-f2', "$6'000.000 / $6'200.000", 'Presencial Bogotá', [{label:'Diagnósticos comportamentales',score:90},{label:'Investigación aplicada',score:92},{label:'Reportes técnicos ejecutivos',score:88}], 'Perfil equilibrado entre rigor metodológico y comunicación ejecutiva, con experiencia en intervenciones de campo con medición de impacto.', true, ['Profesional en ciencias sociales, administrativas, económicas o afines', 'Más de 3 años en investigación aplicada y experimentación en campo', 'Dominio de metodologías EAST, 3B o COMB en diseño de intervenciones', 'Disponibilidad presencial en Bogotá o municipios aledaños']),
   ],
 };
 

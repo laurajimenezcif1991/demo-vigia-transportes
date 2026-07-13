@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { asset } from '../lib/asset';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -8,7 +7,6 @@ import {
   Lock,
   CheckCircle2,
   HelpCircle,
-  Zap,
   Building2,
   Trophy,
   MessageSquare,
@@ -29,7 +27,9 @@ import {
   Briefcase,
   GraduationCap,
   FileText,
-  ExternalLink,
+  CalendarDays,
+  MinusCircle,
+  XCircle,
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import WizardBar from '../components/layout/WizardBar';
@@ -40,16 +40,30 @@ import Button from '../components/ui/Button';
 import Gauge from '../components/ui/Gauge';
 import StarRating from '../components/ui/StarRating';
 import PruebaPsicologicaContent from '../components/ui/PruebaPsicologicaContent';
-import PruebaTecnicaContent from '../components/ui/PruebaTecnicaContent';
+import PrescreeningProgressComponent from '../components/ui/PrescreeningProgress';
+import type { PrescreeningProgress } from '../data/mock';
+import PruebaConocimientoContent from '../components/ui/PruebaConocimientoContent';
+import VoiceInterviewSection from '../components/ui/VoiceInterviewSection';
+import PruebaManejoContent, { PREFILLED, PREFILLED_NO_APTO, calcManejoScore } from '../components/ui/PruebaManejoContent';
+import ValidacionAntecedentes from '../components/ui/ValidacionAntecedentes';
+import type { VariantKey } from '../components/ui/ValidacionAntecedentes';
+import ValidacionesContent, { getValidacionesStatus } from '../components/ui/ValidacionesContent';
+import type { ValidacionesState } from '../components/ui/ValidacionesContent';
+import ContratacionContent, { getContratacionStatus } from '../components/ui/ContratacionContent';
+import type { ContratacionState } from '../components/ui/ContratacionContent';
+import WhatsAppDocumentosModal from '../components/ui/WhatsAppDocumentosModal';
+import ConfirmAprobadosModal from '../components/ui/ConfirmAprobadosModal';
+import DescartarModal from '../components/ui/DescartarModal';
+import WhatsAppPreEntrevistaModal, { WaIcon } from '../components/ui/WhatsAppPreEntrevistaModal';
+import WhatsAppAgendarEntrevistaModal from '../components/ui/WhatsAppAgendarEntrevistaModal';
+import { useWaPrescreening } from '../context/WaPrescreeningContext';
 import {
   interviewData,
+  type Candidate,
   type InterviewFeedback,
   type PipelineStageKey,
   type RecomendacionValue,
-  type Candidate,
-  type PrescreeningProgress,
 } from '../data/mock';
-import PrescreeningProgressComponent from '../components/ui/PrescreeningProgress';
 import { useCandidateStatus } from '../context/CandidateStatusContext';
 import { useInterview, calcScore } from '../context/InterviewContext';
 import clockHistoryUrl from '../assets-icons/clock-history.svg';
@@ -61,7 +75,12 @@ import { Skeleton, SkeletonCircle } from '../components/ui/Skeleton';
 const ONEPAGE_PIPELINE_STAGES: PipelineStageKey[] = [
   'scoring',
   'prescreening',
+  'prueba_manejo',
+  'entrevistas',
   'evaluaciones',
+  'prueba_conocimiento',
+  'estudios',
+  'finalistas',
 ];
 
 function normalizeOnepageStage(raw: string | null): PipelineStageKey {
@@ -77,7 +96,8 @@ export default function CandidateOnepage() {
 
   const { candidate: apiCandidate, loading: candidateLoading, error: candidateError } = useCandidateDetail(candidateId);
   const reducedMotion = usePrefersReducedMotion();
-  const { isCandidatePending } = useMockStageState();
+  const { isCandidatePending, isContratado, marcarContratado } = useMockStageState();
+  const { isCompleted: isWaCompleted, getResult: getWaResult, markCompleted: markWaCompleted } = useWaPrescreening();
   const isMockJob = jobId.startsWith('mock-');
   const openMockCv = () => {
     if (!isMockJob) return;
@@ -119,7 +139,7 @@ export default function CandidateOnepage() {
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Hoja de vida — ${candidate.name}</title>
+  <title>${candidate.hasCV === false ? 'HV construida vía WhatsApp' : 'Hoja de vida'} — ${candidate.name}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #f2f4f7; color: #1a1a2e; }
@@ -155,6 +175,7 @@ export default function CandidateOnepage() {
     <div class="header">
       <h1>${candidate.name}</h1>
       <p class="role">${candidate.role} · ${candidate.location}</p>
+      ${candidate.hasCV === false ? '<p style="font-size:11px;color:#a78bfa;margin-top:6px;letter-spacing:0.04em;">✦ HV construida vía WhatsApp</p>' : ''}
       <div class="contact">
         <span>📞 ${phone}</span>
         <span>✉️ ${email}</span>
@@ -191,14 +212,22 @@ export default function CandidateOnepage() {
     const url  = URL.createObjectURL(blob);
     window.open(url, '_blank');
   };
-  const isPendingPrescreening = isMockJob && isCandidatePending(jobId, 'prescreening', candidateId);
-  const isPendingEntrevistas  = isMockJob && isCandidatePending(jobId, 'entrevistas',  candidateId);
-  const isPendingEvaluaciones = isMockJob && isCandidatePending(jobId, 'evaluaciones', candidateId);
+  const isPendingPrescreening   = isMockJob && isCandidatePending(jobId, 'prescreening',       candidateId);
+  const isPendingEntrevistas    = isMockJob && isCandidatePending(jobId, 'entrevistas',         candidateId);
+  const isPendingEvaluaciones   = isMockJob && isCandidatePending(jobId, 'evaluaciones',        candidateId);
+  const isPendingConocimiento   = isMockJob && isCandidatePending(jobId, 'prueba_conocimiento', candidateId);
   const candidate = apiCandidate ?? { id: candidateId, name: '', role: '', sector: '', years: '', location: '', bio: '', score: 0, avatarInitials: candidateId.slice(0, 2).toUpperCase(), avatarColor: '#8750F6', hasCurrentJob: false, superpoder: '', aspiration: '', budget: '', salaryRange: 'en_rango' as const, currentStage: stage, scoringAI: { score: 0, status: 'pendiente' as const, resumen: '', noNegociables: [], logros: [], senales: [] } };
+
+  // Cumulative unlock order: each stage unlocks all accordions up to and including it
+  const UNLOCK_ORDER = ['prescreening','prueba_manejo','entrevistas','evaluaciones','prueba_conocimiento','estudios','finalistas'] as const;
+  const effectiveStage = (candidate.currentStage && UNLOCK_ORDER.includes(candidate.currentStage as typeof UNLOCK_ORDER[number]))
+    ? candidate.currentStage
+    : stage;
+  const stageIdx = UNLOCK_ORDER.indexOf(effectiveStage as typeof UNLOCK_ORDER[number]);
+  const stageReached = (required: typeof UNLOCK_ORDER[number]) => stageIdx >= UNLOCK_ORDER.indexOf(required);
+
   // Show prescreening if URL stage implies it OR if the API returned prescreening data OR if candidate was advanced there
-  const hasPrescreening  = !!(apiCandidate?.prescreeningAI) || stage === 'prescreening' || stage === 'entrevistas' || stage === 'evaluaciones' || isPendingPrescreening;
-  const hasEntrevistas   = !isMockJob && (stage === 'entrevistas' || stage === 'evaluaciones' || isPendingEntrevistas);
-  const hasEvaluaciones  = stage === 'evaluaciones' || isPendingEvaluaciones;
+  const hasPrescreening = !!(apiCandidate?.prescreeningAI) || stageReached('prescreening') || isPendingPrescreening;
 
   const { setStatus } = useCandidateStatus();
   const { getFeedback } = useInterview();
@@ -220,32 +249,82 @@ export default function CandidateOnepage() {
   const entrevistasDescarta =
     entrevistasDone && (hrRecomendacion === 'no_recomiendo' || hmRecomendacion === 'no_recomiendo');
 
-  const [scoringOpen, setScoringOpen] = useState(() => stage === 'scoring');
-  const [prescreeningOpen, setPrescreeningOpen] = useState(() => stage === 'prescreening');
+  const [prescreeningOpen, setPrescreeningOpen] = useState(() => effectiveStage === 'prescreening');
+  const [pruebaManejoOpen, setPruebaManejoOpen] = useState(() => effectiveStage === 'prueba_manejo');
+  // Pick driving test preset based on candidate score: red (<45) → no_apto, else standard
+  const pruebaManejoPreset = candidate.score < 45 ? PREFILLED_NO_APTO : PREFILLED;
+  const [pruebaManejoScore, setPruebaManejoScore] = useState<number | undefined>(
+    stageReached('prueba_manejo') ? calcManejoScore(pruebaManejoPreset) : undefined
+  );
+  // Voice interview only done if candidate reached entrevistas stage
+  const [voiceInterviewDone, setVoiceInterviewDone] = useState(() => stageReached('entrevistas'));
+  // Validaciones open by default when candidate is in estudios or finalistas
+  const [validacionesOpen, setValidacionesOpen] = useState(() => stageReached('estudios'));
+
+  // Contratación open by default when candidate has reached finalistas stage
+  const [contrataciónOpen, setContrataciónOpen] = useState(() => stageReached('finalistas'));
+  const [contrataciónState, setContrataciónState] = useState<ContratacionState>(() => {
+    // Pre-load cédula if candidate is already in finalistas (simulates WhatsApp delivery)
+    const n = parseInt((candidateId ?? '').replace(/\D/g, '') || '0', 10);
+    return {
+      cedula:         stageReached('finalistas') && n % 3 !== 0
+        ? { name: `Cedula_${candidateId}.pdf`, size: 0, uploadedAt: new Date('2026-06-15') }
+        : null,
+      cuentaBancaria: null,
+      eps:            null,
+      pensiones:      null,
+      referencias:    null,
+    };
+  });
+
+  // Pre-loaded docs only for candidates who reached estudios/finalistas
+  const mockValidaciones: ValidacionesState = stageReached('estudios') ? {
+    examenMedico: {
+      name: 'Informe_Medico_Ocupacional_ConductorC2.pdf',
+      size: 0,
+      uploadedAt: new Date('2026-06-18T10:30:00'),
+      url: '/demo-transportes/Informe_Medico_Ocupacional_ConductorC2.pdf',
+    },
+    estudioSeguridad: {
+      name: 'Estudio_Seguridad_Personal_ConductorC2.pdf',
+      size: 0,
+      uploadedAt: new Date('2026-06-19T14:15:00'),
+      url: '/demo-transportes/Estudio_Seguridad_Personal_ConductorC2.pdf',
+    },
+    visitaDomiciliaria: null,
+  } : { examenMedico: null, estudioSeguridad: null, visitaDomiciliaria: null };
+
+  const [validacionesState, setValidacionesState] = useState<ValidacionesState>(mockValidaciones);
+  const [waDoctosOpen, setWaDoctosOpen] = useState(false);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [descartarModalOpen, setDescartarModalOpen] = useState(false);
   const [entrevistasOpen, setEntrevistasOpen] = useState(() => stage === 'entrevistas');
   const [evaluacionesOpen, setEvaluacionesOpen] = useState(() => stage === 'evaluaciones');
-  const [pruebaTecnicaOpen, setPruebaTecnicaOpen] = useState(false);
+  const [conocimientoOpen, setConocimientoOpen] = useState(() => stage === 'prueba_conocimiento');
+  const [waModalOpen, setWaModalOpen] = useState(false);
+  const [waAgendarOpen, setWaAgendarOpen] = useState(false);
 
-  const scoringSectionRef = useRef<HTMLDivElement>(null);
+
   const prescreeningSectionRef = useRef<HTMLDivElement>(null);
   const entrevistasSectionRef = useRef<HTMLDivElement>(null);
   const evaluacionesSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setScoringOpen(stage === 'scoring');
-    setPrescreeningOpen(stage === 'prescreening');
-    setEntrevistasOpen(stage === 'entrevistas');
-    setEvaluacionesOpen(stage === 'evaluaciones');
-    setPruebaTecnicaOpen(false);
+    setPrescreeningOpen(effectiveStage === 'prescreening');
+    setPruebaManejoOpen(effectiveStage === 'prueba_manejo');
+    setEntrevistasOpen(effectiveStage === 'entrevistas');
+    setEvaluacionesOpen(effectiveStage === 'evaluaciones');
+    setValidacionesOpen(stageReached('estudios'));
+    setPruebaManejoScore(stageReached('prueba_manejo') ? calcManejoScore(pruebaManejoPreset) : undefined);
+    setVoiceInterviewDone(stageReached('entrevistas'));
+
 
     const sectionEl: HTMLElement | null =
-      stage === 'scoring'
-        ? scoringSectionRef.current
-        : stage === 'prescreening'
-          ? prescreeningSectionRef.current
-          : stage === 'entrevistas'
-            ? entrevistasSectionRef.current
-            : evaluacionesSectionRef.current;
+      stage === 'prescreening'
+        ? prescreeningSectionRef.current
+        : stage === 'entrevistas'
+          ? entrevistasSectionRef.current
+          : evaluacionesSectionRef.current;
 
     const t = window.setTimeout(() => {
       sectionEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -253,23 +332,6 @@ export default function CandidateOnepage() {
 
     return () => window.clearTimeout(t);
   }, [stage, candidateId, jobId]);
-  const [techTestScore, setTechTestScore] = useState<number | null>(() => {
-    try {
-      const raw = localStorage.getItem(`unio_tech_feedback_${candidateId}`);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      const vals: number[] = Object.values(data.ratings ?? {});
-      if (!vals.length || vals.some((v) => !v)) return null;
-      return Math.round((vals.reduce((a: number, b: number) => a + b, 0) / vals.length) * 20);
-    } catch { return null; }
-  });
-  const [techTestRecomendacion, setTechTestRecomendacion] = useState<string | null>(() => {
-    try {
-      const raw = localStorage.getItem(`unio_tech_feedback_${candidateId}`);
-      if (!raw) return null;
-      return JSON.parse(raw)?.recomendacion ?? null;
-    } catch { return null; }
-  });
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -459,19 +521,32 @@ export default function CandidateOnepage() {
             )}
 
             <div style={{ flex: 1 }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 800,
-                  fontSize: '28px',
-                  color: 'var(--color-brand-primary)',
-                  margin: '0 0 10px',
-                }}
-              >
-                {candidate.name}
-              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 800,
+                    fontSize: '28px',
+                    color: 'var(--color-brand-primary)',
+                    margin: 0,
+                  }}
+                >
+                  {candidate.name}
+                </h2>
+                {isContratado(candidateId ?? '') && (
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '4px 12px', borderRadius: '999px',
+                    background: '#dcfce7', border: '1.5px solid #86efac',
+                    fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, color: '#15803d',
+                  }}>
+                    <CheckCircle2 size={13} color="#15803d" />
+                    Contratado
+                  </div>
+                )}
+              </div>
 
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px', alignItems: 'center' }}>
                 <Badge variant="prescreening" small>{candidate.role}</Badge>
                 <span style={{ color: 'var(--color-neutral-300)', fontSize: '14px' }}>•</span>
                 <Badge variant="default" small>{candidate.sector.split(',')[0].trim()}</Badge>
@@ -484,6 +559,20 @@ export default function CandidateOnepage() {
                 <Badge variant="default" small>
                   <img src={clockHistoryUrl} width={11} height={11} alt="" /> {candidate.years}
                 </Badge>
+                {(() => {
+                  const n = parseInt((candidate.id ?? '').replace(/\D/g, '') || '0', 10);
+                  const daysAgo = (n * 13 + 7) % 90;
+                  const d = new Date('2026-06-23');
+                  d.setDate(d.getDate() - daysAgo);
+                  const month = d.toLocaleDateString('en-US', { month: 'short' });
+                  const day   = String(d.getDate()).padStart(2, '0');
+                  const year  = String(d.getFullYear()).slice(2);
+                  return (
+                    <Badge variant="default" small>
+                      <CalendarDays size={11} /> Aplicación: {month} {day} /{year}
+                    </Badge>
+                  );
+                })()}
               </div>
 
               {/* Estado actual */}
@@ -507,15 +596,31 @@ export default function CandidateOnepage() {
               </div>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                <Button variant="outline" size="sm" onClick={openMockCv}>
-                  <FileText size={14} />
-                  Hoja de vida
-                </Button>
-                {(candidate as Candidate).runtVerification && (
-                  <Button variant="outline" size="sm" onClick={() => window.open(asset('/manifiestos-vigia.pdf'), '_blank')}>
-                    <ExternalLink size={14} />
-                    Ver manifiestos
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px', alignItems: 'center' }}>
+                {candidate.hasCV === false ? (
+                  <button
+                    onClick={openMockCv}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '7px',
+                      fontSize: '13px', fontWeight: 600,
+                      color: '#15803d',
+                      background: '#dcfce7',
+                      border: '1.5px solid #86efac',
+                      padding: '6px 14px', borderRadius: '8px',
+                      cursor: 'pointer', lineHeight: 1,
+                      fontFamily: 'var(--font-display)',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#bbf7d0')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#dcfce7')}
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="#16a34a"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.554 4.124 1.524 5.855L.057 23.572a.5.5 0 0 0 .614.612l5.76-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.945 9.945 0 0 1-5.09-1.392l-.364-.217-3.777.99 1.006-3.683-.236-.379A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    HV construida vía WhatsApp
+                  </button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={openMockCv}>
+                    <FileText size={14} />
+                    Hoja de vida
                   </Button>
                 )}
                 {/* Portafolio oculto — no eliminar */}
@@ -526,7 +631,15 @@ export default function CandidateOnepage() {
 
           {/* Right: Gauge */}
           <div style={{ flexShrink: 0 }}>
-            <Gauge score={candidate.score} size={160} label="Consolidado" animated reducedMotion={reducedMotion} animationDurationMs={1100} />
+            <Gauge
+              score={candidate.score}
+              size={160}
+              label="Consolidado"
+              animated
+              reducedMotion={reducedMotion}
+              animationDurationMs={1100}
+              disabled={candidate.prescreeningAI?.status === 'no_realizada'}
+            />
           </div>
         </div>
 
@@ -557,188 +670,294 @@ export default function CandidateOnepage() {
 
         {/* Accordion sections */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* 1. Scoring AI */}
-          <div ref={scoringSectionRef} style={{ scrollMarginTop: 24 }}>
-            <AccordionSection
-              number={1}
-              title="Verificación (RUNT/RNDC)"
-              score={candidate.scoringAI.score}
-              statusText={
-                candidate.scoringAI.status === 'rechazado'
-                  ? 'Descartado'
-                  : candidate.scoringAI.status === 'continua'
-                  ? 'Continúa'
-                  : 'Pendiente'
-              }
-              statusOk={candidate.scoringAI.status === 'continua'}
-              isOpen={scoringOpen}
-              onToggle={() => setScoringOpen(!scoringOpen)}
-              isLocked={false}
-            >
-              <ScoringContent candidate={candidate} />
-            </AccordionSection>
-          </div>
+          {/* 1. Pre-entrevista IA */}
+          {(() => {
+            const waResult = getWaResult(candidateId);
+            const waCompleted = isWaCompleted(candidateId);
+            const prescreeningData = candidate.prescreeningAI ?? (waCompleted ? waResult : undefined);
+            const hasPrescreeningData = !!prescreeningData;
+            const prescreeningStatus = prescreeningData?.status;
+            const prescreeningScore = hasPrescreening && !isPendingPrescreening ? (prescreeningData?.score ?? candidate.prescreeningAI?.score) : undefined;
 
-          {/* 2. Pre-entrevista IA */}
-          <div ref={prescreeningSectionRef} style={{ scrollMarginTop: 24 }}>
-            <AccordionSection
-              number={2}
-              title="Pre-entrevista IA"
-              score={hasPrescreening && !isPendingPrescreening ? candidate.prescreeningAI?.score : undefined}
-              statusText={
-                isPendingPrescreening
-                  ? 'En proceso'
-                  : hasPrescreening
-                  ? candidate.prescreeningAI?.status === 'rechazado'
-                    ? 'Descartado'
-                    : candidate.prescreeningAI?.status === 'continua'
-                    ? 'Continúa'
-                    : 'Pendiente'
-                  : 'Por iniciar'
-              }
-              statusOk={!isPendingPrescreening && hasPrescreening && candidate.prescreeningAI?.status === 'continua'}
-              isOpen={prescreeningOpen}
-              onToggle={() => hasPrescreening && setPrescreeningOpen(!prescreeningOpen)}
-              isLocked={!hasPrescreening}
-            >
-              {hasPrescreening && (
-                isPendingPrescreening ? (
-                  <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-                    Pendiente: la pre-entrevista IA aún no ha sido procesada para este candidato.
-                  </div>
-                ) : candidate.prescreeningAI ? (() => {
-                  // Derive prescreening progress — use explicit data if available, otherwise fallback
-                  const derivedProgress: PrescreeningProgress = candidate.prescreeningProgress ?? (() => {
-                    const rvStatus =
-                      candidate.prescreeningAI!.status === 'continua' ? 'passed'
-                      : candidate.prescreeningAI!.status === 'rechazado' ? 'failed'
-                      : 'pending';
-                    const waStatus =
-                      rvStatus !== 'passed' ? 'not_started'
-                      : candidate.prescreeningAI!.status === 'continua' ? 'completed'
-                      : 'in_progress';
-                    return {
-                      resumeValidation: { status: rvStatus as PrescreeningProgress['resumeValidation']['status'] },
-                      whatsappPrescreening: { status: waStatus as PrescreeningProgress['whatsappPrescreening']['status'] },
-                    };
-                  })();
-                  const rvPassed = derivedProgress.resumeValidation.status === 'passed';
-                  return (
-                    <>
-                      <PrescreeningProgressComponent
-                        resumeValidation={derivedProgress.resumeValidation}
-                        whatsappPrescreening={derivedProgress.whatsappPrescreening}
-                        variant="onePager"
-                      />
-                      {rvPassed ? (
-                        <PrescreeningContent prescreening={candidate.prescreeningAI!} />
-                      ) : (
-                        <div style={{ marginTop: '16px', padding: '14px 18px', background: '#f8f8fa', borderRadius: '12px', border: '1px solid #e2e2e4' }}>
-                          <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-                            {derivedProgress.resumeValidation.status === 'failed'
-                              ? 'La HV no pasó la validación de criterios básicos. La pre-entrevista por WhatsApp no se inicia hasta que el candidato actualice su hoja de vida.'
-                              : 'La validación de HV está en proceso. La pre-entrevista se habilitará una vez completada.'}
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  );
-                })() : null
-              )}
-            </AccordionSection>
-          </div>
-
-          {/* 3. Entrevistas — hidden for mock-vigia */}
-          {!isMockJob && <div ref={entrevistasSectionRef} style={{ scrollMarginTop: 24 }}>
-            <AccordionSection
-              number={3}
-              title="Entrevistas"
-              score={isPendingEntrevistas ? undefined : entrevistaScore}
-              statusText={
-                isPendingEntrevistas
-                  ? 'En proceso'
-                  : entrevistasDescarta ? 'Descartado' :
-                  entrevistasDone     ? 'Continúa'   :
-                  entrevistaScore !== null ? 'En proceso' : 'Por iniciar'
-              }
-              statusOk={!isPendingEntrevistas && entrevistasDone && !entrevistasDescarta}
-              isOpen={entrevistasOpen}
-              onToggle={() => hasEntrevistas && setEntrevistasOpen(!entrevistasOpen)}
-              isLocked={!hasEntrevistas}
-            >
-              {/* For pending candidates, show the empty form so it's ready to fill */}
-              <EntrevistasContent
-                candidateId={candidateId}
-                jobId={jobId}
-                interview={isPendingEntrevistas ? undefined : interview}
-                savedFeedback={savedFeedback}
-              />
-            </AccordionSection>
-          </div>}
-
-          {/* 3 (mock) / 4–5 (non-mock). Evaluaciones / Prueba de manejo */}
-          <div ref={evaluacionesSectionRef} style={{ scrollMarginTop: 24 }}>
-            <AccordionSection
-              number={isMockJob ? 3 : 4}
-              title={isMockJob ? 'Prueba de manejo' : 'Prueba Psicológica'}
-              score={isMockJob ? undefined : (isPendingEvaluaciones ? undefined : (stage === 'evaluaciones' ? candidate.psychTest?.score : undefined))}
-              statusText={
-                isPendingEvaluaciones
-                  ? 'En proceso'
-                  : hasEvaluaciones
-                  ? (isMockJob && (candidate as Candidate).pruebaManejo?.status === 'agendada' ? 'Agendada' : 'En proceso')
-                  : hasEntrevistas ? 'En proceso' : 'Por iniciar'
-              }
-              statusOk={!isPendingEvaluaciones && hasEvaluaciones}
-              isOpen={evaluacionesOpen}
-              onToggle={() => (hasEvaluaciones || hasEntrevistas || isPendingEvaluaciones) && setEvaluacionesOpen(!evaluacionesOpen)}
-              isLocked={!hasEvaluaciones && !hasEntrevistas && !isPendingEvaluaciones}
-            >
-              {(hasEvaluaciones || hasEntrevistas || isPendingEvaluaciones) && (
-                isMockJob ? (
-                  <PruebaManejoContent candidate={candidate as Candidate} isPending={isPendingEvaluaciones} />
-                ) : isPendingEvaluaciones ? (
-                  <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-                    Pendiente: la prueba psicológica aún no ha sido completada por el candidato.
-                  </div>
-                ) : candidate.psychTest ? (
-                  <PruebaPsicologicaContent data={candidate.psychTest} />
-                ) : (
-                  <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
-                    Pendiente: la prueba psicológica aún no ha sido completada por el candidato.
-                  </div>
-                )
-              )}
-            </AccordionSection>
-
-            {!isMockJob && (
-              <div style={{ marginTop: 12 }}>
+            return (
+              <div ref={prescreeningSectionRef} style={{ scrollMarginTop: 24 }}>
                 <AccordionSection
-                  number={5}
-                  title="Prueba Técnica"
-                  score={(hasEntrevistas || isPendingEvaluaciones) ? techTestScore : undefined}
+                  number={1}
+                  title="Prescreening"
+                  score={prescreeningScore}
                   statusText={
-                    (!hasEntrevistas && !isPendingEvaluaciones) ? 'Por iniciar' :
-                    isPendingEvaluaciones && techTestScore === null ? 'En proceso' :
-                    techTestScore === null ? 'Por iniciar' :
-                    techTestRecomendacion === 'no_recomendar' ? 'Descartado' : 'Continúa'
+                    hasPrescreeningData
+                      ? prescreeningStatus === 'rechazado' ? 'Descartado'
+                      : prescreeningStatus === 'no_realizada' ? 'No realizada'
+                      : 'Completado'
+                      : (isPendingPrescreening || waCompleted || hasPrescreening) ? 'En proceso'
+                      : 'Sin iniciar'
                   }
-                  statusOk={techTestScore !== null && techTestRecomendacion !== 'no_recomendar'}
-                  isOpen={pruebaTecnicaOpen}
-                  onToggle={() => (hasEntrevistas || isPendingEvaluaciones) && setPruebaTecnicaOpen(!pruebaTecnicaOpen)}
-                  isLocked={!hasEntrevistas && !isPendingEvaluaciones}
+                  statusOk={hasPrescreeningData && prescreeningStatus !== 'rechazado' && prescreeningStatus !== 'no_realizada'}
+                  isOpen={prescreeningOpen}
+                  onToggle={() => (hasPrescreening || waCompleted) && setPrescreeningOpen(!prescreeningOpen)}
+                  isLocked={!hasPrescreening && !waCompleted}
                 >
-                  {(hasEntrevistas || isPendingEvaluaciones) && (
-                    <PruebaTecnicaContent
-                      candidateId={candidateId}
-                      meta={isPendingEvaluaciones ? undefined : interview?.techTestMeta}
-                      onScoreChange={setTechTestScore}
-                      onRecomendacionChange={setTechTestRecomendacion}
-                    />
+                  {(hasPrescreening || waCompleted) && (
+                    prescreeningData && prescreeningStatus === 'no_realizada' ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '12px',
+                          padding: '36px 24px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '50%',
+                            background: 'var(--color-surface-subtle)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <HelpCircle size={24} color="var(--color-text-muted)" />
+                        </div>
+                        <div>
+                          <div
+                            style={{
+                              fontFamily: 'var(--font-display)',
+                              fontWeight: 700,
+                              fontSize: '15px',
+                              color: 'var(--color-text-primary)',
+                              marginBottom: '6px',
+                            }}
+                          >
+                            Validación no realizada
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              color: 'var(--color-text-muted)',
+                              lineHeight: '1.6',
+                              maxWidth: '380px',
+                            }}
+                          >
+                            La revisión de HV no fue completada, por lo que la pre-entrevista por WhatsApp no pudo iniciarse.
+                          </div>
+                        </div>
+                      </div>
+                    ) : prescreeningData ? (() => {
+                      // Derive prescreening progress — use explicit data if present,
+                      // otherwise derive from prescreeningAI + hasCV
+                      const derivedProgress: PrescreeningProgress = candidate.prescreeningProgress ?? (() => {
+                        const rvStatus =
+                          !candidate.hasCV ? 'not_available'
+                          : prescreeningStatus === 'continua' || prescreeningStatus === 'pendiente' ? 'passed'
+                          : prescreeningStatus === 'rechazado' ? 'failed'
+                          : 'pending';
+                        const waStatus =
+                          rvStatus !== 'passed' ? 'not_started'
+                          : prescreeningStatus === 'continua' ? 'completed'
+                          : prescreeningStatus === 'pendiente' ? 'in_progress'
+                          : 'not_started';
+                        return {
+                          resumeValidation: { status: rvStatus as PrescreeningProgress['resumeValidation']['status'] },
+                          whatsappPrescreening: { status: waStatus as PrescreeningProgress['whatsappPrescreening']['status'] },
+                        };
+                      })();
+                      const rvStatus = derivedProgress.resumeValidation.status;
+                      const rvPassed = rvStatus === 'passed';
+                      return (
+                        <>
+                          <PrescreeningProgressComponent
+                            resumeValidation={derivedProgress.resumeValidation}
+                            whatsappPrescreening={derivedProgress.whatsappPrescreening}
+                            variant="onePager"
+                          />
+                          {rvPassed ? (
+                            <PrescreeningContent
+                              prescreening={prescreeningData}
+                              hasCV={candidate.hasCV}
+                              runt={candidate.runtVerification}
+                              candidateScore={candidate.score}
+                              isPendingEvaluaciones={isPendingEvaluaciones}
+                              prescreeningRechazado={prescreeningData.status === 'rechazado'}
+                            />
+                          ) : (
+                            <div style={{ marginTop: '16px', padding: '14px 18px', background: '#f8f8fa', borderRadius: '12px', border: '1px solid #e2e2e4' }}>
+                              <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+                                {rvStatus === 'failed'
+                                  ? 'La HV no pasó la validación de criterios básicos. El proceso de prescreening no continúa hasta que el candidato actualice y vuelva a cargar su hoja de vida.'
+                                  : 'La validación de HV está en proceso. Las siguientes etapas (pre-entrevista, no negociables y antecedentes) se habilitarán una vez completada.'}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })() : (
+                      <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+                        Pendiente: la pre-entrevista por WhatsApp aún no ha sido procesada para este candidato.
+                      </div>
+                    )
                   )}
                 </AccordionSection>
               </div>
-            )}
+            );
+          })()}
+
+          {/* 2. Prueba de manejo */}
+          <div style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={2}
+              title="Prueba de manejo"
+              score={pruebaManejoScore}
+              statusText={
+                pruebaManejoScore !== undefined ? 'Completado'
+                : stage === 'prueba_manejo' ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={pruebaManejoScore !== undefined}
+              isOpen={pruebaManejoOpen}
+              onToggle={() => setPruebaManejoOpen(o => !o)}
+              isLocked={pruebaManejoScore === undefined && stage !== 'prueba_manejo' && stage !== 'entrevistas' && stage !== 'evaluaciones' && stage !== 'estudios' && stage !== 'finalistas'}
+            >
+              {pruebaManejoScore !== undefined || stage === 'prueba_manejo' ? (
+                pruebaManejoScore !== undefined ? (
+                  <PruebaManejoContent
+                    candidateId={candidateId}
+                    initialData={pruebaManejoPreset}
+                    onScoreChange={setPruebaManejoScore}
+                  />
+                ) : (
+                  <div style={{ padding: '16px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+                    La prueba de manejo está en proceso de ser registrada.
+                  </div>
+                )
+              ) : (
+                <div style={{ padding: '16px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+                  La prueba de manejo aún no ha sido programada para este candidato.
+                </div>
+              )}
+            </AccordionSection>
+          </div>
+
+          {/* 3. Entrevista */}
+          <div ref={entrevistasSectionRef} style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={3}
+              title="Entrevista"
+              statusText={
+                !stageReached('entrevistas') ? 'Sin iniciar'
+                : voiceInterviewDone ? 'Completado'
+                : effectiveStage === 'entrevistas' ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={voiceInterviewDone}
+              isOpen={entrevistasOpen}
+              onToggle={() => setEntrevistasOpen(!entrevistasOpen)}
+              isLocked={!stageReached('entrevistas')}
+            >
+              <VoiceInterviewSection onDoneChange={setVoiceInterviewDone} />
+            </AccordionSection>
+          </div>
+
+          {/* 4. Prueba Psicométrica (PRIMA) */}
+          <div ref={evaluacionesSectionRef} style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={4}
+              title="Prueba Psicométrica"
+              score={candidate.psychTest?.score}
+              statusText={
+                !stageReached('evaluaciones') ? 'Sin iniciar'
+                : candidate.psychTest && !isPendingEvaluaciones ? 'Completado'
+                : isPendingEvaluaciones ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={!!candidate.psychTest && !isPendingEvaluaciones}
+              isOpen={evaluacionesOpen}
+              onToggle={() => setEvaluacionesOpen(!evaluacionesOpen)}
+              isLocked={!stageReached('evaluaciones')}
+            >
+              {candidate.psychTest ? (
+                <PruebaPsicologicaContent data={candidate.psychTest} />
+              ) : (
+                <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+                  Pendiente: la prueba psicométrica (PRIMA) aún no ha sido completada por el candidato.
+                </div>
+              )}
+            </AccordionSection>
+          </div>
+
+          {/* 5. Prueba de conocimiento */}
+          <div style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={5}
+              title="Prueba de conocimiento"
+              score={candidate.knowledgeTest?.score}
+              statusText={
+                !stageReached('prueba_conocimiento') ? 'Sin iniciar'
+                : candidate.knowledgeTest && !isPendingConocimiento ? 'Completado'
+                : isPendingConocimiento ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={!!candidate.knowledgeTest && !isPendingConocimiento}
+              isOpen={conocimientoOpen}
+              onToggle={() => setConocimientoOpen(!conocimientoOpen)}
+              isLocked={!stageReached('prueba_conocimiento')}
+            >
+              {candidate.knowledgeTest ? (
+                <PruebaConocimientoContent data={candidate.knowledgeTest} />
+              ) : (
+                <div style={{ padding: '8px 0', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
+                  Pendiente: la prueba de conocimiento aún no ha sido completada por el candidato.
+                </div>
+              )}
+            </AccordionSection>
+          </div>
+
+          {/* 6. Validaciones — always rendered, locked until estudios */}
+          <div style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={6}
+              title="Validaciones"
+              statusText={
+                !stageReached('estudios') ? 'Sin iniciar'
+                : getValidacionesStatus(validacionesState) === 'completado' ? 'Completado'
+                : getValidacionesStatus(validacionesState) === 'en_proceso' ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={stageReached('estudios') && getValidacionesStatus(validacionesState) === 'completado'}
+              isOpen={validacionesOpen}
+              onToggle={() => setValidacionesOpen(!validacionesOpen)}
+              isLocked={!stageReached('estudios')}
+            >
+              <ValidacionesContent defaultState={mockValidaciones} onChange={setValidacionesState} />
+            </AccordionSection>
+          </div>
+
+          {/* 7. Contratación — always rendered, locked until finalistas */}
+          <div style={{ scrollMarginTop: 24 }}>
+            <AccordionSection
+              number={7}
+              title="Contratación"
+              statusText={
+                !stageReached('finalistas') ? 'Sin iniciar'
+                : getContratacionStatus(contrataciónState) === 'completado' ? 'Completo'
+                : getContratacionStatus(contrataciónState) === 'en_proceso' ? 'En proceso'
+                : 'Sin iniciar'
+              }
+              statusOk={stageReached('finalistas') && getContratacionStatus(contrataciónState) === 'completado'}
+              isOpen={contrataciónOpen}
+              onToggle={() => setContrataciónOpen(!contrataciónOpen)}
+              isLocked={!stageReached('finalistas')}
+            >
+              <ContratacionContent
+                defaultState={contrataciónState}
+                onChange={setContrataciónState}
+              />
+            </AccordionSection>
           </div>
         </div>
         </div>
@@ -755,41 +974,132 @@ export default function CandidateOnepage() {
             Score: {candidate.score}/100
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setStatus(candidateId, stage, 'continua');
-              const idx = ONEPAGE_PIPELINE_STAGES.indexOf(stage);
-              if (idx >= 0 && idx < ONEPAGE_PIPELINE_STAGES.length - 1) {
-                const next = ONEPAGE_PIPELINE_STAGES[idx + 1];
-                navigate(`/pipeline/${jobId}/candidate/${candidateId}?stage=${next}`, { replace: true });
-              }
-              showToast('¡Candidato marcado como Continúa!');
-            }}
-          >
-            <CheckCircle2 size={16} />
-            {isMockJob && stage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="md"
-            onClick={() => {
-              setStatus(candidateId, stage, 'por_validar');
-              showToast('¡Marcado como pendiente!');
-            }}
-          >
-            <HelpCircle size={16} />
-            Marcar pendiente
-          </Button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Pre-entrevista WhatsApp: visible en etapa scoring */}
+          {stage === 'scoring' && (
+            <button
+              onClick={() => setWaModalOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', borderRadius: '10px',
+                background: '#25D366', border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: '13px', color: '#fff',
+                boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
+              }}
+            >
+              <WaIcon size={20} color="white" />
+              Lanzar pre-entrevista
+            </button>
+          )}
+          {stage === 'prescreening' && (
+            <button
+              onClick={() => setWaAgendarOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '9px 16px', borderRadius: '10px',
+                background: '#25D366', border: 'none', cursor: 'pointer',
+                fontWeight: 700, fontSize: '13px', color: '#fff',
+                boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
+              }}
+            >
+              <WaIcon size={20} color="white" />
+              Agendar prueba de manejo
+            </button>
+          )}
+          {/* Finalistas: Marcar como contratado (docs recibidos) o Solicitar docs */}
+          {stage === 'finalistas' && (() => {
+            const n = parseInt((candidateId ?? '').replace(/\D/g, '') || '0', 10);
+            const docsRecibido = n % 3 === 2;
+            const yaContratado = isContratado(candidateId ?? '');
+            if (yaContratado) {
+              return (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '9px 16px', borderRadius: '10px',
+                  background: '#dcfce7', border: '1.5px solid #86efac',
+                  fontWeight: 700, fontSize: '13px', color: '#15803d',
+                }}>
+                  <CheckCircle2 size={16} color="#15803d" />
+                  Contratado
+                </div>
+              );
+            }
+            if (docsRecibido) {
+              return (
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    if (!candidateId) return;
+                    marcarContratado([candidateId]);
+                    // Collapse all accordions
+                    setPrescreeningOpen(false);
+                    setPruebaManejoOpen(false);
+                    setEntrevistasOpen(false);
+                    setEvaluacionesOpen(false);
+                    setConocimientoOpen(false);
+                    setValidacionesOpen(false);
+                    setContrataciónOpen(false);
+                    showToast('¡Candidato marcado como contratado! ✓');
+                  }}
+                >
+                  <CheckCircle2 size={16} />
+                  Marcar como contratado
+                </Button>
+              );
+            }
+            return (
+              <button
+                onClick={() => setWaDoctosOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '9px 16px', borderRadius: '10px',
+                  background: '#25D366', border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: '13px', color: '#fff',
+                  boxShadow: '0 2px 8px rgba(37,211,102,0.35)',
+                }}
+              >
+                <WaIcon size={20} color="white" />
+                Solicitar docs. de ingreso
+              </button>
+            );
+          })()}
+          {stage !== 'scoring' && stage !== 'prescreening' && stage !== 'finalistas' && stage !== 'estudios' && (
+            <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setStatus(candidateId, stage, 'continua');
+                  const idx = ONEPAGE_PIPELINE_STAGES.indexOf(stage);
+                  if (idx >= 0 && idx < ONEPAGE_PIPELINE_STAGES.length - 1) {
+                    const next = ONEPAGE_PIPELINE_STAGES[idx + 1];
+                    navigate(`/pipeline/${jobId}/candidate/${candidateId}?stage=${next}`, { replace: true });
+                  }
+                  showToast('¡Candidato avanzado a la siguiente etapa!');
+                }}
+              >
+                <CheckCircle2 size={16} />
+                {stage === 'prueba_manejo' ? 'Pasar a Entrevista'
+                  : stage === 'entrevistas' ? 'Pasar a Prueba Psicométrica'
+                  : stage === 'evaluaciones' ? 'Pasar a Prueba de conocimiento'
+                  : stage === 'prueba_conocimiento' ? 'Pasar a Validaciones'
+                  : 'Pasar etapa'}
+              </Button>
+          )}
+          {stage === 'estudios' && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setApproveConfirmOpen(true)}
+            >
+              <CheckCircle2 size={16} />
+              Aprobar candidato
+            </Button>
+          )}
           <Button
             variant="danger-outline"
             size="md"
-            onClick={() => {
-              setStatus(candidateId, stage, 'descartado');
-              showToast('Candidato descartado');
-            }}
+            onClick={() => setDescartarModalOpen(true)}
           >
             <X size={16} />
             Descartar
@@ -797,11 +1107,157 @@ export default function CandidateOnepage() {
         </div>
       </WizardBar>
 
+      <DescartarModal
+        open={descartarModalOpen}
+        onClose={() => setDescartarModalOpen(false)}
+        candidateName={candidate?.name}
+        onConfirm={(_reasonId, _type, _comments) => {
+          setStatus(candidateId, stage, 'descartado');
+          setDescartarModalOpen(false);
+          showToast('Candidato descartado');
+        }}
+      />
+
       <Toast
         message={toastMessage}
         visible={toastVisible}
         onClose={() => setToastVisible(false)}
       />
+
+      {/* WhatsApp pre-entrevista modal */}
+      <WhatsAppPreEntrevistaModal
+        isOpen={waModalOpen}
+        onClose={() => setWaModalOpen(false)}
+        candidates={candidate ? [candidate] : []}
+        jobTitle={candidate?.role}
+        onConfirmSend={(cands) => {
+          markWaCompleted(cands);
+          showToast('Pre-entrevista enviada · Resultados disponibles en Pre-screening IA');
+        }}
+      />
+
+      {/* WhatsApp agendar entrevista modal */}
+      <WhatsAppAgendarEntrevistaModal
+        isOpen={waAgendarOpen}
+        onClose={() => setWaAgendarOpen(false)}
+        candidates={candidate ? [candidate] : []}
+        jobTitle={candidate?.role}
+        onConfirmSend={() => {
+          setStatus(candidateId, stage, 'continua');
+          const idx = ONEPAGE_PIPELINE_STAGES.indexOf(stage);
+          if (idx >= 0 && idx < ONEPAGE_PIPELINE_STAGES.length - 1) {
+            const next = ONEPAGE_PIPELINE_STAGES[idx + 1];
+            navigate(`/pipeline/${jobId}/candidate/${candidateId}?stage=${next}`, { replace: true });
+          }
+          showToast('Entrevista agendada · Candidato pasado a Entrevistas');
+        }}
+      />
+
+      <WhatsAppDocumentosModal
+        isOpen={waDoctosOpen}
+        onClose={() => setWaDoctosOpen(false)}
+        candidates={candidate ? [candidate] : []}
+        jobTitle={candidate?.role}
+        onConfirmSend={() => {
+          showToast('Solicitud de documentos enviada por WhatsApp');
+        }}
+      />
+
+      {/* Modal: confirmar aprobación (estudios → finalistas) */}
+      {approveConfirmOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(15,8,36,0.55)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setApproveConfirmOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff', borderRadius: '20px',
+              padding: '40px 36px', maxWidth: '440px', width: '90%',
+              boxShadow: '0 20px 60px rgba(15,8,36,0.18)',
+              position: 'relative',
+            }}
+          >
+            <button
+              onClick={() => setApproveConfirmOpen(false)}
+              style={{
+                position: 'absolute', top: '16px', right: '16px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--color-text-muted)', padding: '4px',
+                borderRadius: '8px', display: 'flex', alignItems: 'center',
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                background: 'var(--color-surface-muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <AlertTriangle size={26} color="var(--color-text-primary)" />
+              </div>
+            </div>
+
+            <h2 style={{
+              fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '22px',
+              color: 'var(--color-text-primary)', textAlign: 'center', margin: '0 0 10px',
+            }}>
+              ¿Aprobar a {candidate?.name}?
+            </h2>
+            <p style={{
+              fontSize: '14px', color: 'var(--color-text-muted)',
+              textAlign: 'center', margin: '0 0 8px', lineHeight: '1.55',
+            }}>
+              El candidato pasará a la etapa de Aprobados.
+            </p>
+            <p style={{
+              fontSize: '13px', color: 'var(--color-text-muted)',
+              textAlign: 'center', margin: '0 0 28px', lineHeight: '1.5',
+              fontWeight: 500,
+            }}>
+              Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setApproveConfirmOpen(false)}
+                style={{
+                  flex: 1, padding: '11px', borderRadius: '10px',
+                  border: '1px solid var(--color-border-default)',
+                  background: '#ffffff', cursor: 'pointer',
+                  fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setApproveConfirmOpen(false);
+                  setStatus(candidateId, stage, 'continua');
+                  const idx = ONEPAGE_PIPELINE_STAGES.indexOf(stage);
+                  if (idx >= 0 && idx < ONEPAGE_PIPELINE_STAGES.length - 1) {
+                    const next = ONEPAGE_PIPELINE_STAGES[idx + 1];
+                    navigate(`/pipeline/${jobId}/candidate/${candidateId}?stage=${next}`, { replace: true });
+                  }
+                  showToast(`${candidate?.name} aprobado/a ✓`);
+                }}
+                style={{
+                  flex: 1, padding: '11px', borderRadius: '10px',
+                  border: 'none', background: 'var(--color-brand-primary)',
+                  cursor: 'pointer', fontWeight: 700, fontSize: '14px', color: '#fff',
+                }}
+              >
+                Aprobar candidato
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
@@ -830,11 +1286,6 @@ const MOCK_EDUCATION: Record<string, { degree: string; institution: string; year
     { degree: 'Administración de Empresas', institution: 'Universidad EAFIT', year: '2014' },
     { degree: 'MBA con énfasis en Mercadeo y Ventas', institution: 'Universidad del Norte', year: '2017' },
   ],
-  'Conductor C2 Carga Refrigerada': [
-    { degree: 'Licencia de Conducción Categoría C2', institution: 'Ministerio de Transporte de Colombia', year: '2022' },
-    { degree: 'Técnico en Mecánica Automotriz', institution: 'SENA', year: '2019' },
-    { degree: 'Bachiller Académico', institution: 'Colegio Nacional', year: '2015' },
-  ],
 };
 
 const MOCK_SKILLS: Record<string, string[]> = {
@@ -843,7 +1294,6 @@ const MOCK_SKILLS: Record<string, string[]> = {
   'Analista de Talento Humano': ['Reclutamiento y selección', 'Entrevistas por competencias', 'ATS', 'Nómina básica', 'Indicadores de RRHH'],
   'Jefe de Finanzas':         ['Contabilidad y costos', 'Presupuestación', 'Excel avanzado', 'NIIF', 'Power BI', 'SAP'],
   'Gerente de Ventas':        ['Liderazgo comercial', 'Negociación B2B', 'CRM (Salesforce)', 'KPIs de ventas', 'Gestión de equipo'],
-  'Conductor C2 Carga Refrigerada': ['Conducción vehículos C2', 'Control unidad de frío', 'Caja Fuller', 'Inspección preoperacional', 'App Vigía Conductor', 'HSEQ y BASC', 'Gestión de manifiestos'],
 };
 
 function _mockPhone(name: string): string {
@@ -976,23 +1426,25 @@ function AccordionSection({
               {score === null ? '—' : score}
             </div>
           )}
-          {isLocked ? (
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--color-surface-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Lock size={20} color="var(--color-neutral-400)" />
-            </div>
-          ) : (
-            isOpen ? <ChevronUp size={20} color="var(--color-text-muted)" /> : <ChevronDown size={20} color="var(--color-text-muted)" />
-          )}
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: 'var(--radius-md)',
+              background: isLocked ? 'var(--color-surface-subtle)' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {isLocked
+              ? <Lock size={20} color="var(--color-neutral-400)" />
+              : isOpen
+                ? <ChevronUp size={20} color="var(--color-text-muted)" />
+                : <ChevronDown size={20} color="var(--color-text-muted)" />
+            }
+          </div>
         </div>
       </div>
 
@@ -1011,348 +1463,97 @@ function AccordionSection({
   );
 }
 
-// ─── Scoring content ──────────────────────────────────────────────────────────
+// ─── RUNT Verification Modal ──────────────────────────────────────────────────
 
-function ScoringContent({ candidate }: { candidate: Candidate }) {
-  const ai = candidate.scoringAI;
-  const runt = candidate.runtVerification;
+type RuntData = {
+  cc: string;
+  totalManifiestos: number;
+  licenseCategories: { categoria: string; fechaExpedicion: string; fechaVencimiento: string }[];
+};
 
-  // For Vigia candidates (those with runtVerification) hide:
-  //   - first row (licencia — shown in the RUNT table instead)
-  //   - last row (expectativa salarial — shown in the salary bar above)
-  const noNegsToShow = runt
-    ? ai.noNegociables.filter((_, i) => i !== 0 && i !== ai.noNegociables.length - 1)
-    : ai.noNegociables;
-
+function RuntModal({ runt, onClose }: { runt: RuntData; onClose: () => void }) {
   return (
-    <div style={{ paddingTop: '20px' }}>
-      {/* Resumen */}
-      <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>
-          Resumen
-        </h3>
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
-          "{ai.resumen}"
-        </p>
-      </div>
-
-      {/* No negociables */}
-      <div style={{ marginBottom: '24px' }}>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          minWidth: '460px',
+          maxWidth: '540px',
+          width: '100%',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Dark header */}
         <div
           style={{
-            border: '1.5px solid #d4d4d5',
-            borderRadius: '26px',
-            overflow: 'hidden',
-            background: 'rgba(255,255,255,0.43)',
+            background: '#1a1a2e',
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          {/* Header row */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 245px',
-              background: '#f7f7f8',
-              borderBottom: '1px solid #d4d4d5',
-            }}
+          <span style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '14px' }}>
+            Verificación RUNT — Licencia Nro: {runt.cc}
+          </span>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', padding: '2px' }}
           >
-            <div style={{ padding: '11px 24px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539' }}>
-              No negociables
-            </div>
-            <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', textAlign: 'center', borderLeft: '1px solid #d4d4d5' }}>
-              ¿Cumple?
-            </div>
-          </div>
+            <X size={18} />
+          </button>
+        </div>
 
-          {/* Data rows */}
-          {noNegsToShow.map((item, i) => (
+        {/* Table */}
+        <div style={{ padding: '0' }}>
+          {/* Table header */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', background: '#f5f5f7', borderBottom: '1px solid #e2e2e4' }}>
+            {['Categoría', 'Fecha expedición', 'Fecha vencimiento'].map((h) => (
+              <div key={h} style={{ padding: '10px 16px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: '#363539' }}>
+                {h}
+              </div>
+            ))}
+          </div>
+          {/* Table rows */}
+          {runt.licenseCategories.map((row, i) => (
             <div
               key={i}
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 245px',
-                borderBottom: i < noNegsToShow.length - 1 ? '1px solid #d4d4d5' : 'none',
+                display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                borderBottom: i < runt.licenseCategories.length - 1 ? '1px solid #e2e2e4' : 'none',
               }}
             >
-              <div style={{ padding: '12px 24px', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '14px', lineHeight: '20px', color: '#363539', display: 'flex', alignItems: 'center' }}>
-                {item.label}
-              </div>
-              <div style={{ borderLeft: '1px solid #d4d4d5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {item.cumple ? (
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                      <path d="M2.5 7L5.5 10L11.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                ) : (
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                      <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-                )}
-              </div>
+              <div style={{ padding: '10px 16px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#363539', fontWeight: 600 }}>{row.categoria}</div>
+              <div style={{ padding: '10px 16px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#363539' }}>{row.fechaExpedicion}</div>
+              <div style={{ padding: '10px 16px', fontFamily: 'var(--font-display)', fontSize: '13px', color: '#363539' }}>{row.fechaVencimiento}</div>
             </div>
           ))}
         </div>
-      </div>
 
-      {/* RUNT Verification table — only for Vigia candidates */}
-      {runt && (
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{
-            border: '1.5px solid var(--color-neutral-200)',
-            borderRadius: '26px',
-            overflow: 'hidden',
-            background: 'var(--container-bg)',
-          }}>
-            {/* Title header */}
-            <div style={{
-              background: 'var(--color-brand-primary)',
-              padding: '12px 24px',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 800,
-              fontSize: '14px',
-              lineHeight: '20px',
-              color: 'var(--color-text-inverse)',
-            }}>
-              Verificación RUNT — Licencia Nro: {runt.cc}
-            </div>
-
-            {/* Column headers */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              background: 'var(--color-neutral-50)',
-              borderBottom: '1px solid var(--color-neutral-200)',
-            }}>
-              {['Categoría', 'Fecha expedición', 'Fecha vencimiento'].map((h) => (
-                <div key={h} style={{
-                  padding: '11px 24px',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  color: 'var(--color-neutral-800)',
-                  textAlign: 'center',
-                }}>{h}</div>
-              ))}
-            </div>
-
-            {/* Data rows */}
-            {runt.licenseCategories.map((row, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr',
-                  borderBottom: i < runt.licenseCategories.length - 1 ? '1px solid var(--color-neutral-200)' : 'none',
-                  background: i % 2 === 0 ? 'var(--color-surface-base)' : 'var(--color-neutral-50)',
-                }}
-              >
-                <div style={{
-                  padding: '12px 24px',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  color: 'var(--color-neutral-800)',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>{row.categoria}</div>
-                <div style={{
-                  padding: '12px 24px',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 400,
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  color: 'var(--color-text-muted)',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>{row.fechaExpedicion}</div>
-                <div style={{
-                  padding: '12px 24px',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 400,
-                  fontSize: '14px',
-                  lineHeight: '20px',
-                  color: 'var(--color-text-muted)',
-                  textAlign: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>{row.fechaVencimiento}</div>
-              </div>
-            ))}
-
-            {/* Manifiestos footer row */}
-            <div style={{
-              padding: '12px 24px',
-              background: 'var(--color-secondary-50)',
-              borderTop: '1px solid var(--color-neutral-200)',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              fontSize: '14px',
-              lineHeight: '20px',
-              color: 'var(--color-brand-primary)',
-            }}>
-              Total de manifiestos expedidos en el rango de fechas solicitado:{' '}
-              <span style={{ color: 'var(--color-brand-accent)', fontWeight: 800 }}>{runt.totalManifiestos}</span>
-            </div>
-          </div>
+        {/* Total manifiestos */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #e2e2e4', background: '#fafafa' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: '#363539' }}>
+            Total de manifiestos expedidos en el rango de fechas solicitado:{' '}
+            <strong style={{ color: 'var(--color-brand-primary)' }}>{runt.totalManifiestos}</strong>
+          </span>
         </div>
-      )}
 
-      {/* Logros + Señales */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Logros relevantes
-          </h3>
-          {ai.logros.map((raw, i) => {
-            let label = '';
-            let description = typeof raw === 'string' ? raw : '';
-            try {
-              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-              if (parsed && typeof parsed === 'object') {
-                label = parsed.label ?? '';
-                description = parsed.description ?? '';
-              }
-            } catch { /* keep raw as description */ }
-            return (
-              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <Trophy size={18} color="var(--color-warning-600)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  {label && <strong style={{ color: 'var(--color-text-primary)', display: 'block', marginBottom: '2px' }}>{label}</strong>}
-                  {description}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Señales para validar
-          </h3>
-          {ai.senales.map((raw, i) => {
-            let type = 'warning';
-            let description = typeof raw === 'string' ? raw : '';
-            try {
-              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-              if (parsed && typeof parsed === 'object') {
-                type = parsed.type ?? 'warning';
-                description = parsed.description ?? '';
-              }
-            } catch { /* keep raw as description */ }
-            const iconMap: Record<string, React.ReactNode> = {
-              warning:   <AlertTriangle size={16} color="var(--color-warning-600)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-              lightbulb: <Lightbulb size={16} color="var(--color-brand-accent)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-              target:    <Target size={16} color="var(--color-info-600, #0ea5e9)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-            };
-            const icon = iconMap[type] ?? <MessageSquare size={16} color="var(--color-info-600)" style={{ flexShrink: 0, marginTop: '2px' }} />;
-            return (
-              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                {icon}
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{description}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Prueba de manejo content (Vigía only) ────────────────────────────────────
-
-function PruebaManejoContent({ candidate, isPending }: { candidate: Candidate; isPending: boolean }) {
-  const pm = candidate.pruebaManejo;
-
-  if (isPending || !pm) {
-    return (
-      <div style={{ paddingTop: '16px', color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: '1.6' }}>
-        Candidato en proceso — la prueba de manejo aún no ha sido agendada.
-      </div>
-    );
-  }
-
-  if (pm.status === 'pendiente') {
-    return (
-      <div style={{ paddingTop: '16px' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '10px',
-          background: 'var(--color-warning-bg)',
-          border: '1.5px solid var(--color-warning)',
-          borderRadius: 'var(--radius-xl)', padding: '14px 24px',
-        }}>
-          <AlertTriangle size={18} color="var(--color-warning)" />
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', color: 'var(--color-neutral-800)' }}>
-              Pendiente por agendar
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-              El candidato aún no tiene fecha asignada para la prueba de manejo.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ paddingTop: '16px' }}>
-      <div style={{
-        border: '1.5px solid var(--color-neutral-200)',
-        borderRadius: '26px',
-        overflow: 'hidden',
-        background: 'var(--container-bg)',
-      }}>
-        {/* Header */}
-        <div style={{
-          background: 'var(--color-brand-primary)',
-          padding: '12px 24px',
-          fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px',
-          color: 'var(--color-text-inverse)',
-        }}>
-          Prueba de manejo agendada
-        </div>
-        {/* Details */}
-        {[
-          { label: 'Fecha', value: pm.fecha ?? '—' },
-          { label: 'Hora', value: pm.hora ?? '—' },
-          { label: 'Lugar', value: pm.lugar ?? '—' },
-        ].map((row, i) => (
-          <div key={i} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 24px',
-            borderBottom: i < 2 ? '1px solid var(--color-neutral-200)' : 'none',
-            background: i % 2 === 0 ? 'var(--color-surface-base)' : 'var(--color-neutral-50)',
-          }}>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', color: 'var(--color-neutral-700)' }}>
-              {row.label}
-            </span>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '14px', color: 'var(--color-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {i === 0 && <Calendar size={14} color="var(--color-brand-accent)" />}
-              {i === 1 && <Clock size={14} color="var(--color-brand-accent)" />}
-              {i === 2 && <MapPin size={14} color="var(--color-brand-accent)" />}
-              {row.value}
-            </span>
-          </div>
-        ))}
-        {/* Status footer */}
-        <div style={{
-          padding: '10px 24px',
-          background: 'var(--color-success-bg)',
-          borderTop: '1px solid var(--color-positive-200, #A2ECC2)',
-          display: 'flex', alignItems: 'center', gap: '8px',
-          fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px',
-          color: 'var(--color-positive-700, #17723F)',
-        }}>
-          <CheckCircle2 size={15} color="var(--color-positive-600, #1F9854)" />
-          Prueba confirmada — el candidato fue notificado por WhatsApp
+        {/* Disclaimer */}
+        <div style={{ padding: '10px 16px', borderTop: '1px solid #e2e2e4', background: '#f5f5f7', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+            Validado por medio de Runt Pro
+          </span>
         </div>
       </div>
     </div>
@@ -1361,43 +1562,36 @@ function PruebaManejoContent({ candidate, isPending }: { candidate: Candidate; i
 
 // ─── Prescreening content ─────────────────────────────────────────────────────
 
-function PrescreeningContent({ prescreening }: { prescreening: NonNullable<typeof candidates[0]['prescreeningAI']> }) {
+function PrescreeningContent({ prescreening, hasCV, runt, candidateScore = 0, isPendingEvaluaciones = false, prescreeningRechazado = false }: {
+  prescreening: NonNullable<Candidate['prescreeningAI']>;
+  hasCV?: boolean;
+  runt?: RuntData;
+  candidateScore?: number;
+  isPendingEvaluaciones?: boolean;
+  prescreeningRechazado?: boolean;
+}) {
+  const [runtModalOpen, setRuntModalOpen] = useState(false);
+  const antVar: VariantKey = candidateScore >= 80 ? 'sin_novedad' : 'alto_riesgo';
+  const antecedentesAltoRiesgo = antVar === 'alto_riesgo';
+
   return (
     <div style={{ paddingTop: '20px' }}>
-      {/* Resumen de la conversación + entorno personal */}
-      <div style={{ marginBottom: '24px' }}>
+      {/* Resumen candidato */}
+      <div style={{ marginBottom: '16px' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 8px', color: 'var(--color-text-primary)' }}>
-          Resumen de la conversación
+          Resumen del candidato
         </h3>
-        <p style={{ margin: '0 0 12px', fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
+        <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
           {prescreening.resumen}
         </p>
-        {prescreening.entornoPersonal && prescreening.entornoPersonal.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {prescreening.entornoPersonal.map((item, i) => (
-              <span key={i} style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                background: item.status === 'warning' ? 'var(--color-warning-bg)' : 'var(--color-neutral-50)',
-                border: `1px solid ${item.status === 'warning' ? 'var(--color-warning)' : 'var(--color-neutral-200)'}`,
-                borderRadius: '20px',
-                padding: '4px 12px',
-                fontFamily: 'var(--font-display)',
-                fontSize: '12px',
-                color: item.status === 'warning' ? 'var(--color-warning-600, #A37800)' : 'var(--color-neutral-700)',
-              }}>
-                {item.status === 'ok' && <Check size={11} color="var(--color-success)" strokeWidth={2.5} />}
-                {item.status === 'warning' && <AlertTriangle size={11} color="var(--color-warning)" strokeWidth={2.5} />}
-                <span style={{ fontWeight: 600 }}>{item.label}:</span>
-                <span style={{ fontWeight: 400 }}>{item.value}</span>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* No negociables with scores */}
+      {/* RUNT Modal */}
+      {runtModalOpen && runt && (
+        <RuntModal runt={runt} onClose={() => setRuntModalOpen(false)} />
+      )}
+
+      {/* No negociables — 2-column table */}
       <div style={{ marginBottom: '24px' }}>
         <div
           style={{
@@ -1411,7 +1605,7 @@ function PrescreeningContent({ prescreening }: { prescreening: NonNullable<typeo
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '220px 190px 1fr',
+              gridTemplateColumns: '1fr 120px',
               background: '#f7f7f8',
               borderBottom: '1px solid #d4d4d5',
             }}
@@ -1422,113 +1616,147 @@ function PrescreeningContent({ prescreening }: { prescreening: NonNullable<typeo
             <div style={{ padding: '11px 8px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', textAlign: 'center', borderLeft: '1px solid #d4d4d5' }}>
               Evaluación
             </div>
-            <div style={{ padding: '11px 16px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '14px', lineHeight: '20px', color: '#363539', borderLeft: '1px solid #d4d4d5' }}>
-              Detalle / Evidencia
+          </div>
+
+          {/* Standard rows */}
+          {[
+            { label: 'Cuenta con Licencia de conducción C2 vigente con mínimo 2 años desde su expedición.', fails: false },
+            { label: 'Tiene mínimo 2 años de experiencia certificada en conducción de carga.', fails: prescreeningRechazado },
+            { label: 'Vive en Cota, municipios aledaños o Bogotá.', fails: false },
+            { label: 'Cuenta con medio de transporte para llegar a la sede en vía Cota-Siberia.', fails: false },
+          ].map(({ label, fails }, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 120px',
+                borderBottom: '1px solid #d4d4d5',
+                alignItems: 'center',
+                background: fails ? '#fff5f5' : undefined,
+              }}
+            >
+              <div style={{ padding: '14px 24px', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '13px', lineHeight: '21px', color: fails ? '#b91c1c' : '#363539' }}>
+                {label}
+              </div>
+              <div style={{ padding: '14px 16px', borderLeft: '1px solid #d4d4d5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                {fails ? (
+                  <>
+                    <XCircle size={15} color="#b91c1c" />
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#b91c1c' }}>No cumple</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={15} color="#15803d" />
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#15803d' }}>Cumple</span>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* RUNT/RNDC row */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 120px',
+              borderBottom: '1px solid #d4d4d5',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ padding: '14px 24px', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '13px', lineHeight: '21px', color: runt ? '#363539' : '#9ca3af' }}>
+              {runt ? (
+                <>
+                  <div style={{ marginBottom: '6px' }}>Validación RUNT / RNDC verificada sin infracciones graves ni suspensiones vigentes.</div>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={() => setRuntModalOpen(true)}
+                      style={{
+                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '12px',
+                        color: 'var(--color-brand-accent)', textDecoration: 'underline',
+                      }}
+                    >
+                      Consultar RUNT
+                    </button>
+                    <button
+                      onClick={() => window.open('/manifiestos-vigia.pdf', '_blank')}
+                      style={{
+                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '12px',
+                        color: 'var(--color-brand-accent)', textDecoration: 'underline',
+                      }}
+                    >
+                      Ver Manifiestos
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <span>Validación RUNT / RNDC no verificada — candidato no cumplió criterios previos.</span>
+              )}
+            </div>
+            <div style={{ padding: '14px 16px', borderLeft: '1px solid #d4d4d5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', alignSelf: 'stretch' }}>
+              {runt ? (
+                <>
+                  <CheckCircle2 size={15} color="#15803d" />
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#15803d' }}>Cumple</span>
+                </>
+              ) : (
+                <>
+                  <MinusCircle size={15} color="#9ca3af" />
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#9ca3af' }}>Sin Validar</span>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Data rows */}
-          {(prescreening.noNegociables as any[]).map((item: any, i: number) => {
-            const score: number = item.score ?? 0;
-            const isHighScore = score >= 90;
-            const trackBg = isHighScore ? '#f0f0f0' : '#f2ecfe';
-            const fillBg  = isHighScore ? '#27be69' : '#8750f6';
-            const barFill = Math.round((score / 100) * 128);
-            const isLast  = i === prescreening.noNegociables.length - 1;
-
-            return (
-              <div
-                key={i}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '220px 190px 1fr',
-                  borderBottom: isLast ? 'none' : '1px solid #d4d4d5',
-                  alignItems: 'stretch',
-                }}
-              >
-                {/* Col 1 — label */}
-                <div style={{ padding: '14px 16px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '13px', lineHeight: '21px', color: '#363539', display: 'flex', alignItems: 'center' }}>
-                  {item.label}
-                </div>
-
-                {/* Col 2 — score bar + number */}
-                <div style={{ padding: '14px 8px', borderLeft: '1px solid #d4d4d5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                  {/* Track */}
-                  <div style={{ width: '100px', height: '8px', borderRadius: '4px', background: trackBg, flexShrink: 0, overflow: 'hidden' }}>
-                    <div style={{ width: `${barFill * 100 / 128}%`, height: '100%', borderRadius: '4px', background: fillBg }} />
-                  </div>
-                  {/* Number */}
-                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '15px', color: '#434245', minWidth: '28px', textAlign: 'right' }}>
-                    {score}
-                  </span>
-                </div>
-
-                {/* Col 3 — evidence */}
-                <div style={{ padding: '14px 16px', borderLeft: '1px solid #d4d4d5', fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: '13px', lineHeight: '21px', color: '#363539' }}>
-                  {item.evidencia}
-                </div>
-              </div>
-            );
-          })}
+          {/* Antecedentes row */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 120px',
+              alignItems: 'center',
+              background: (runt && !isPendingEvaluaciones && antecedentesAltoRiesgo) ? '#fff5f5' : undefined,
+            }}
+          >
+            <div style={{ padding: '14px 24px', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: '13px', lineHeight: '21px', color: (!runt || isPendingEvaluaciones) ? '#9ca3af' : antecedentesAltoRiesgo ? '#b91c1c' : '#363539' }}>
+              {(!runt || isPendingEvaluaciones) ? (
+                <span>Validación de antecedentes no verificada — pendiente de etapas previas.</span>
+              ) : antecedentesAltoRiesgo ? (
+                <span>Validación de antecedentes con registros de riesgo — se detectaron novedades que requieren revisión.</span>
+              ) : (
+                <span>Validación de antecedentes verificada sin registros judiciales ni disciplinarios activos.</span>
+              )}
+            </div>
+            <div style={{ padding: '14px 16px', borderLeft: '1px solid #d4d4d5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', alignSelf: 'stretch' }}>
+              {(!runt || isPendingEvaluaciones) ? (
+                <>
+                  <MinusCircle size={15} color="#9ca3af" />
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#9ca3af' }}>Sin Validar</span>
+                </>
+              ) : antecedentesAltoRiesgo ? (
+                <>
+                  <XCircle size={15} color="#b91c1c" />
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#b91c1c' }}>No cumple</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={15} color="#15803d" />
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '13px', color: '#15803d' }}>Cumple</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Plus detectados + Señales */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Plus detectados
-          </h3>
-          {prescreening.plusDetectados.map((raw, i) => {
-            let label = '';
-            let description = typeof raw === 'string' ? raw : '';
-            try {
-              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-              if (parsed && typeof parsed === 'object') {
-                label = parsed.label ?? '';
-                description = parsed.description ?? '';
-              }
-            } catch { /* keep raw */ }
-            return (
-              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                <Trophy size={18} color="var(--color-warning-600)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                  {label && <strong style={{ color: 'var(--color-text-primary)', display: 'block', marginBottom: '2px' }}>{label}</strong>}
-                  {description}
-                </p>
-              </div>
-            );
-          })}
+      {/* Plus detectados + Señales — ocultos */}
+
+      {/* Validación de Antecedentes expandible — solo cuando hay datos completos */}
+      {!isPendingEvaluaciones && runt && (
+        <div style={{ marginTop: '24px' }}>
+          <ValidacionAntecedentes variant={antVar} collapsible defaultOpen={false} />
         </div>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '15px', margin: '0 0 12px', color: 'var(--color-text-primary)' }}>
-            Señales para validar
-          </h3>
-          {prescreening.senales.map((raw, i) => {
-            let type = 'warning';
-            let description = typeof raw === 'string' ? raw : '';
-            try {
-              const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-              if (parsed && typeof parsed === 'object') {
-                type = parsed.type ?? 'warning';
-                description = parsed.description ?? '';
-              }
-            } catch { /* keep raw */ }
-            const iconMap: Record<string, React.ReactNode> = {
-              warning:   <AlertTriangle size={16} color="var(--color-warning-600)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-              lightbulb: <Lightbulb size={16} color="var(--color-brand-accent)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-              target:    <Target size={16} color="var(--color-info-600, #0ea5e9)" style={{ flexShrink: 0, marginTop: '2px' }} />,
-            };
-            const icon = iconMap[type] ?? <MessageSquare size={16} color="var(--color-info-600)" style={{ flexShrink: 0, marginTop: '2px' }} />;
-            return (
-              <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                {icon}
-                <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{description}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

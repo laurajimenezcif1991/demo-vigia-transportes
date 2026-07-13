@@ -1,6 +1,6 @@
+import { assetUrl } from '../../utils/assets';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { asset } from '../../lib/asset';
 import type { PipelineStageKey } from '../../data/mock';
 
 export type FilterStage = PipelineStageKey | 'finalistas';
@@ -24,10 +24,10 @@ interface StageConfig {
 }
 
 const stages: StageConfig[] = [
-  { key: 'scoring',      label: 'Verificación',   bgToken: 'var(--color-stage-1-bg)', fgToken: 'var(--color-stage-1-fg)', isAI: true  },
+  { key: 'scoring',      label: 'Scoring',       bgToken: 'var(--color-stage-1-bg)', fgToken: 'var(--color-stage-1-fg)', isAI: true  },
   { key: 'prescreening', label: 'Pre-screening',  bgToken: 'var(--color-stage-2-bg)', fgToken: 'var(--color-stage-2-fg)', isAI: true  },
   { key: 'entrevistas',  label: 'Entrevistas',    bgToken: 'var(--color-stage-3-bg)', fgToken: 'var(--color-stage-3-fg)', isAI: false },
-  { key: 'evaluaciones', label: 'Evaluaciones',   bgToken: 'var(--color-stage-4-bg)', fgToken: 'var(--color-stage-4-fg)', isAI: false },
+  { key: 'evaluaciones', label: 'Pruebas',         bgToken: 'var(--color-stage-4-bg)', fgToken: 'var(--color-stage-4-fg)', isAI: false },
 ];
 
 type StageStatus = 'sin_iniciar' | 'en_proceso' | 'completado';
@@ -51,9 +51,9 @@ const statusLabel: Record<StageStatus, string> = {
 };
 
 const statusIcon: Record<StageStatus, string> = {
-  sin_iniciar: asset('/icons/lock.svg'),
-  en_proceso:  asset('/icons/pencil.svg'),
-  completado:  asset('/icons/check-circle.svg'),
+  sin_iniciar: assetUrl('/icons/lock.svg'),
+  en_proceso:  assetUrl('/icons/pencil.svg'),
+  completado:  assetUrl('/icons/check-circle.svg'),
 };
 
 /* ─── IA chip ─────────────────────────────────────────────────────────────── */
@@ -74,7 +74,7 @@ function IAChip() {
         lineHeight: 1,
       }}
     >
-      <img src={asset('/icons/sparkles.svg')} alt="" width={10} height={10} style={{ filter: 'invert(1)' }} />
+      <img src={assetUrl('/icons/sparkles.svg')} alt="" width={10} height={10} style={{ filter: 'invert(1)' }} />
       IA
     </span>
   );
@@ -260,7 +260,7 @@ export default function ValidationPipelineFilter({
           }}
         >
           <img
-            src={finalistaLocked ? asset('/icons/lock.svg') : asset('/icons/check-circle.svg')}
+            src={finalistaLocked ? assetUrl('/icons/lock.svg') : assetUrl('/icons/check-circle.svg')}
             alt={finalistaLocked ? 'Sin iniciar' : 'Completado'}
             width={12}
             height={12}

@@ -113,9 +113,15 @@ export default function Candidatos() {
       case 'low':  list = list.filter((c) => c.score < 50);           break;
     }
 
-    list = [...list].sort((a, b) =>
-      sortDir === 'desc' ? b.score - a.score : a.score - b.score
-    );
+    /* por_validar candidates first, then by score per sortDir */
+    list = [...list].sort((a, b) => {
+      const aStatus = getStatus(a.id, activeStage);
+      const bStatus = getStatus(b.id, activeStage);
+      const aPriority = aStatus === undefined || aStatus === 'por_validar' ? 0 : 1;
+      const bPriority = bStatus === undefined || bStatus === 'por_validar' ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return sortDir === 'desc' ? b.score - a.score : a.score - b.score;
+    });
 
     return list;
   }, [activeStage, filter, search, sortDir, getStatus, isEliminatedBefore]);
@@ -349,7 +355,7 @@ export default function Candidatos() {
         <div style={{ display: 'flex', gap: '12px' }}>
           <Button variant="primary" size="lg" onClick={() => handleBulkAction('pasar')}>
             <CheckCircle2 size={18} />
-            {activeStage === 'prescreening' ? 'Agendar prueba manejo' : 'Pasar etapa'}
+            Pasar etapa
           </Button>
           <Button variant="danger-outline" size="lg" onClick={() => handleBulkAction('descartar')}>
             <X size={18} />
