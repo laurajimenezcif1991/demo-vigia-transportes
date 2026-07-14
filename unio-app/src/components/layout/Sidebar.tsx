@@ -166,7 +166,8 @@ export default function Sidebar({ activeItem }: SidebarProps) {
       <div style={{ padding: '20px 20px 16px' }}>
         <img
           src={companyLogoUrl || assetUrl('/logo-vigia.png')}
-          alt={companyName || 'Demo Transportes'}
+          alt={companyName || 'Vigía Transportes'}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = assetUrl('/logo-vigia.png'); }}
           style={{ maxHeight: '110px', maxWidth: '300px', width: 'auto', height: 'auto', display: 'block', objectFit: 'contain' }}
         />
       </div>
