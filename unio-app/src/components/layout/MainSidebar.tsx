@@ -100,7 +100,7 @@ export default function MainSidebar() {
       {/* Logo */}
       <div style={{ padding: '20px 20px 16px' }}>
         <img
-          src={companyLogoUrl || assetUrl('/logo-demo-transportes.png')}
+          src={companyLogoUrl || assetUrl('/logo-vigia.png')}
           alt={companyName || 'Demo Transportes'}
           style={{
             maxHeight: '110px',

@@ -7,6 +7,18 @@
 
 ## [Sin commitear]
 
+---
+
+## [fix-logo-vigia] — 14 Jul 2026
+
+### Fix: logo Vigia roto en sidebar
+- `PipelineContext.tsx`: valor por defecto de `companyLogoUrl` corregido de `logo-demo-transportes.png` (inexistente) a `logo-vigia.png`
+- `MainSidebar.tsx`: fallback del `<img>` también actualizado a `logo-vigia.png`
+
+---
+
+## [hv-prescreening] — 11 Jun 2026
+
 ### Feature: Validación HV como sub-proceso de Prescreening
 - `PrescreeningProgress.tsx`: nuevo componente reutilizable (variantes `table`, `card`, `onePager`) copiado desde demo-transportes
 - `mock.ts`: tipos `ResumeValidationStatus`, `WaPrescreeningStatus`, interfaz `PrescreeningProgress`; campo `prescreeningProgress?` en `Candidate`; generación automática en `_mkVigia` según score e índice (casos: passed/failed/pending × completed/in_progress/not_started)
