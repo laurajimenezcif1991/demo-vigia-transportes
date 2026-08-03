@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, CheckCircle2, Users, Calendar, ChevronDown, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { X, Users, Calendar, ChevronDown, ChevronLeft, ChevronRight, Clock, MapPin } from 'lucide-react';
 import type { Candidate } from '../../data/mock';
 import Avatar from './Avatar';
 import { WaIcon } from './WhatsAppPreEntrevistaModal';
@@ -11,6 +11,7 @@ const MONTHS_ES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 const DAYS_ES = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
+const DAYS_ABBR_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 const TIME_SLOTS = [
   '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
@@ -59,9 +60,10 @@ function isSameDay(a: Date, b: Date) {
 }
 
 function formatDisplayDate(d: Date) {
+  const dayName = DAYS_ABBR_ES[d.getDay()];
   const day = String(d.getDate()).padStart(2, '0');
   const mon = MONTHS_ES[d.getMonth()].slice(0, 3);
-  return `${day} ${mon} ${d.getFullYear()}`;
+  return `${dayName}, ${day} ${mon} ${d.getFullYear()}`;
 }
 
 function buildCalendar(year: number, month: number) {
@@ -108,7 +110,7 @@ function DatePicker({ value, onChange }: DatePickerProps) {
   const cells = buildCalendar(displayMonth.getFullYear(), displayMonth.getMonth());
 
   return (
-    <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+    <div ref={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{
@@ -313,18 +315,21 @@ export default function WhatsAppAgendarEntrevistaModal({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedHour, setSelectedHour] = useState('');
   const [selectedPlace, setSelectedPlace] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setSelectedDate(null);
       setSelectedHour('');
       setSelectedPlace('');
+      setShowSuccess(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const isFormReady = selectedDate && selectedHour && selectedPlace;
+  const selectedPlaceData = PLACES.find(p => p.id === selectedPlace);
 
   const placeOptions = PLACES.map(p => ({
     id: p.id,
@@ -334,13 +339,24 @@ export default function WhatsAppAgendarEntrevistaModal({
 
   const hourOptions = TIME_SLOTS.map(t => ({ id: t, label: t }));
 
+  const handleConfirm = () => {
+    if (!isFormReady) return;
+    onConfirmSend?.(candidates);
+    setShowSuccess(true);
+  };
+
   return (
     <>
-      <style>{`@keyframes waModalIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`
+        @keyframes waModalIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes waSuccessIn{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}
+        @keyframes waCheckDraw{from{stroke-dashoffset:60}to{stroke-dashoffset:0}}
+        @keyframes waRingPulse{0%{transform:scale(0.8);opacity:0.6}60%{transform:scale(1.15);opacity:0.15}100%{transform:scale(1.4);opacity:0}}
+      `}</style>
 
       {/* Backdrop */}
       <div
-        onClick={onClose}
+        onClick={showSuccess ? onClose : onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 10000,
           background: 'rgba(15,8,36,0.6)', backdropFilter: 'blur(6px)',
@@ -351,19 +367,17 @@ export default function WhatsAppAgendarEntrevistaModal({
         <div
           onClick={e => e.stopPropagation()}
           style={{
-            width: '100%', maxWidth: '480px',
+            width: '100%', maxWidth: '560px',
             background: '#fff', borderRadius: '20px',
             boxShadow: '0 24px 80px rgba(15,8,36,0.22)',
             overflow: 'visible', display: 'flex', flexDirection: 'column',
-            maxHeight: '90vh',
             animation: 'waModalIn 0.22s ease',
           }}
         >
           {/* Header */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: '14px',
-            padding: '20px 24px 18px',
-            borderBottom: '1px solid #F0F0F0',
+            display: 'flex', alignItems: 'flex-start', gap: '14px',
+            padding: '20px 24px 14px',
             flexShrink: 0,
           }}>
             <WaIcon size={40} />
@@ -374,58 +388,151 @@ export default function WhatsAppAgendarEntrevistaModal({
               <div style={{ fontSize: '13px', color: '#666', marginTop: '1px' }}>
                 Alex IA · Demo Transportes
               </div>
+              <div style={{ fontSize: '12.5px', color: '#888', marginTop: '5px', lineHeight: 1.5 }}>
+                Alex enviará automáticamente una confirmación al conductor con los detalles del agendamiento.
+              </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '4px' }}>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '4px', flexShrink: 0 }}>
               <X size={20} />
             </button>
           </div>
 
-          {/* Body */}
-          <div style={{ padding: '24px', overflowY: 'auto' }}>
-
-            {/* Info card */}
+          {/* ── Success view ── */}
+          {showSuccess && (
             <div style={{
-              background: '#F0FFF4', border: '1.5px solid #BBF7D0',
-              borderRadius: '12px', padding: '14px 16px', marginBottom: '20px',
-              display: 'flex', alignItems: 'flex-start', gap: '12px',
+              padding: '40px 32px 36px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px',
+              animation: 'waSuccessIn 0.35s cubic-bezier(0.34,1.56,0.64,1)',
             }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%',
-                background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Calendar size={18} color="white" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '14px', color: '#15803D' }}>
-                  Alex IA · Agendamiento de Prueba de Manejo
+              {/* Animated check */}
+              <div style={{ position: 'relative', width: 88, height: 88 }}>
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  background: '#25D366', opacity: 0.12,
+                  animation: 'waRingPulse 1.2s ease-out 0.2s forwards',
+                }} />
+                <div style={{
+                  width: 88, height: 88, borderRadius: '50%',
+                  background: '#25D366',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 8px 24px rgba(37,211,102,0.35)',
+                }}>
+                  <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <path
+                      d="M10 21L17 28L30 13"
+                      stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{
+                        strokeDasharray: 60,
+                        animation: 'waCheckDraw 0.4s ease 0.15s both',
+                      }}
+                    />
+                  </svg>
                 </div>
-                <p style={{ fontSize: '13px', color: '#166534', margin: '4px 0 0', lineHeight: 1.55 }}>
-                  Alex enviará automáticamente una confirmación al conductor con los detalles del agendamiento.
-                </p>
               </div>
+
+              {/* Title */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: '20px', color: '#111', marginBottom: '6px' }}>
+                  ¡Prueba agendada!
+                </div>
+                <div style={{ fontSize: '13.5px', color: '#666', lineHeight: 1.55 }}>
+                  Alex enviará la confirmación por WhatsApp<br />a {candidates.length === 1 ? 'el candidato' : `los ${candidates.length} candidatos`}.
+                </div>
+              </div>
+
+              {/* Summary card */}
+              <div style={{
+                width: '100%', background: '#F8FFF9', border: '1.5px solid #BBF7D0',
+                borderRadius: '14px', padding: '16px 18px',
+                display: 'flex', flexDirection: 'column', gap: '10px',
+              }}>
+                {selectedDate && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '16px' }}>📅</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: '#166534', fontWeight: 600 }}>
+                      {formatDisplayDate(selectedDate)}
+                    </span>
+                  </div>
+                )}
+                {selectedHour && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '16px' }}>🕐</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: '#166534', fontWeight: 600 }}>
+                      {selectedHour}
+                    </span>
+                  </div>
+                )}
+                {selectedPlaceData && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ fontSize: '16px' }}>📍</span>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', color: '#166534', fontWeight: 700 }}>
+                        {selectedPlaceData.name}
+                      </div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: '12px', color: '#4B7A5E', marginTop: '2px', lineHeight: 1.4 }}>
+                        {selectedPlaceData.address}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div style={{ borderTop: '1px solid #BBF7D0', paddingTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {candidates.map(c => (
+                    <div key={c.id} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '5px',
+                      padding: '3px 10px 3px 6px', borderRadius: '999px',
+                      background: '#E6F9EE', border: '1px solid #BBF7D0',
+                    }}>
+                      <Avatar src={c.photo} initials={c.avatarInitials} color={c.avatarColor} size={18} />
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600, color: '#166534', whiteSpace: 'nowrap' }}>
+                        {c.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: '12px',
+                  background: '#25D366', border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: '15px', color: '#fff',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = '#1DA851'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = '#25D366'; }}
+              >
+                Cerrar
+              </button>
             </div>
+          )}
+
+          {/* Body */}
+          {!showSuccess && <div style={{ padding: '12px 24px 24px' }}>
 
             {/* Candidates */}
-            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: '#444' }}>
-              <Users size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+            <div style={{ marginBottom: '10px', fontSize: '13px', fontWeight: 600, color: '#444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Users size={14} />
               {candidates.length} candidato{candidates.length !== 1 ? 's' : ''} seleccionado{candidates.length !== 1 ? 's' : ''}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
               {candidates.map((c) => (
                 <div key={c.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '10px 14px', borderRadius: '10px',
-                  background: '#FAFAFA', border: '1px solid #EFEFEF',
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '4px 10px 4px 6px',
+                  borderRadius: '999px',
+                  background: '#F4F4F5',
+                  border: '1px solid #E4E4E7',
                 }}>
-                  <Avatar src={c.photo} initials={c.avatarInitials} color={c.avatarColor} size={36} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#111' }}>{c.name}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{c.role}</div>
-                  </div>
+                  <Avatar src={c.photo} initials={c.avatarInitials} color={c.avatarColor} size={20} />
+                  <span style={{ fontWeight: 600, fontSize: '12px', color: '#111', whiteSpace: 'nowrap' }}>
+                    {c.name}
+                  </span>
                   <span style={{
-                    fontWeight: 800, fontSize: '14px',
+                    fontWeight: 700, fontSize: '12px',
                     color: c.score >= 80 ? '#16A34A' : c.score >= 60 ? '#D97706' : '#DC2626',
+                    whiteSpace: 'nowrap',
                   }}>
                     {c.score}
                   </span>
@@ -436,26 +543,26 @@ export default function WhatsAppAgendarEntrevistaModal({
             {/* Scheduling fields */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
 
-              {/* Fecha */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '6px', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Fecha
-                </label>
-                <DatePicker value={selectedDate} onChange={setSelectedDate} />
-              </div>
-
-              {/* Hora */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '6px', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Hora
-                </label>
-                <SimpleDropdown
-                  icon={<Clock size={14} color={selectedHour ? '#128C7E' : '#aaa'} />}
-                  placeholder="Seleccionar hora"
-                  value={selectedHour}
-                  options={hourOptions}
-                  onChange={setSelectedHour}
-                />
+              {/* Fecha + Hora — side by side */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                <div style={{ flex: '0 0 55%' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '6px', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Fecha
+                  </label>
+                  <DatePicker value={selectedDate} onChange={setSelectedDate} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '6px', fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Hora
+                  </label>
+                  <SimpleDropdown
+                    icon={<Clock size={14} color={selectedHour ? '#128C7E' : '#aaa'} />}
+                    placeholder="Hora"
+                    value={selectedHour}
+                    options={hourOptions}
+                    onChange={setSelectedHour}
+                  />
+                </div>
               </div>
 
               {/* Lugar */}
@@ -482,26 +589,45 @@ export default function WhatsAppAgendarEntrevistaModal({
               </div>
             </div>
 
-            {/* Confirm button */}
-            {onConfirmSend && (
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {onConfirmSend && (
+                <button
+                  onClick={handleConfirm}
+                  style={{
+                    flex: 1, padding: '13px', borderRadius: '12px',
+                    background: isFormReady ? '#25D366' : '#E0E0E0',
+                    border: 'none',
+                    cursor: isFormReady ? 'pointer' : 'not-allowed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '9px',
+                    fontWeight: 700, fontSize: '14px',
+                    color: isFormReady ? '#fff' : '#aaa',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseOver={e => { if (isFormReady) (e.currentTarget as HTMLButtonElement).style.background = '#1DA851'; }}
+                  onMouseOut={e => { if (isFormReady) (e.currentTarget as HTMLButtonElement).style.background = '#25D366'; }}
+                >
+                  <WaIcon size={18} color={isFormReady ? '#fff' : '#bbb'} />
+                  Agendar
+                </button>
+              )}
               <button
-                onClick={() => isFormReady && (onConfirmSend(candidates), onClose())}
+                onClick={onClose}
                 style={{
-                  width: '100%', padding: '14px', borderRadius: '12px',
-                  background: isFormReady ? '#128C7E' : '#E0E0E0',
-                  border: 'none',
-                  cursor: isFormReady ? 'pointer' : 'not-allowed',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  fontWeight: 700, fontSize: '15px',
-                  color: isFormReady ? '#fff' : '#aaa',
-                  transition: 'all 0.2s ease',
+                  flex: 1, padding: '13px', borderRadius: '12px',
+                  background: '#FEF2F2', border: '1.5px solid #FECACA',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 600, fontSize: '14px', color: '#DC2626',
+                  transition: 'all 0.15s ease',
                 }}
+                onMouseOver={e => { (e.currentTarget as HTMLButtonElement).style.background = '#FEE2E2'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLButtonElement).style.background = '#FEF2F2'; }}
               >
-                <CheckCircle2 size={20} color={isFormReady ? '#fff' : '#bbb'} />
-                Confirmar y agendar prueba de manejo
+                Cancelar
               </button>
-            )}
-          </div>
+            </div>
+          </div>}
         </div>
       </div>
     </>
