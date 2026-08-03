@@ -98,14 +98,14 @@ export default function MainSidebar() {
       }}
     >
       {/* Logo */}
-      <div style={{ padding: '20px 20px 16px' }}>
+      <div style={{ padding: '20px 20px 16px', overflow: 'hidden' }}>
         <img
           src={companyLogoUrl || assetUrl('/logo-vigia.png')}
           alt={companyName || 'Vigía Transportes'}
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = assetUrl('/logo-vigia.png'); }}
           style={{
-            maxHeight: '110px',
-            maxWidth: '300px',
+            maxHeight: '80px',
+            maxWidth: '100%',
             width: 'auto',
             height: 'auto',
             display: 'block',
